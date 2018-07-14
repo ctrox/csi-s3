@@ -1,5 +1,5 @@
-# CSI for s3
-This is a Container Storage Interface ([CSI](https://github.com/container-storage-interface/spec/blob/master/spec.md)) for s3 (or s3 compatible) storage. This can dynamically allocate buckets and mount them via a fuse mount into any container.
+# CSI for S3
+This is a Container Storage Interface ([CSI](https://github.com/container-storage-interface/spec/blob/master/spec.md)) for S3 (or S3 compatible) storage. This can dynamically allocate buckets and mount them via a fuse mount into any container.
 
 # Kubernetes installation
 ## Requirements
@@ -8,13 +8,12 @@ This is a Container Storage Interface ([CSI](https://github.com/container-storag
 * Docker daemon must allow shared mounts (systemd flag `MountFlags=shared`)
 
 ## 1. Create a secret with your S3 credentials
-The endpoint is optional if you are using something else than AWS S3.
+The endpoint is optional if you are using something else than AWS S3. Also the region can be empty if you are using some other S3 compatible storage.
 ```yaml
 apiVersion: v1
 kind: Secret
 metadata:
   name: csi-s3-secret
-  namespace: kube-system
 stringData:
   accessKeyID: <YOUR_ACCESS_KEY_ID>
   secretAccessKey: <YOUR_SECRET_ACCES_KEY>
@@ -63,7 +62,7 @@ If something does not work as expected, check the troubleshooting section below.
 
 # Additional configuration
 ## Mounter
-By default the driver will use [s3fs](https://github.com/s3fs-fuse/s3fs-fuse) to mount buckets. Alternatively you can configure the storage class to use [goofys](https://github.com/kahing/goofys) for mounting s3 buckets. Note that goofys has some drawbacks in regards to POSIX compliance but in return offers better Performance than s3fs.
+By default the driver will use [s3fs](https://github.com/s3fs-fuse/s3fs-fuse) to mount buckets. Alternatively you can configure the storage class to use [goofys](https://github.com/kahing/goofys) for mounting S3 buckets. Note that goofys has some drawbacks in regards to POSIX compliance but in return offers better Performance than s3fs.
 
 To configure a storage class to use goofys, just set the `mounter` parameter to `goofys`
 ```yaml
