@@ -1,0 +1,11 @@
+---
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: csi-s3
+provisioner: ch.ctrox.csi.s3-driver
+parameters:
+  # specify which mounter to use
+  # can be set to s3fs or goofys
+  # s3fs is the default
+  # mounter: s3fs
