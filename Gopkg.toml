@@ -1,6 +1,6 @@
 [[constraint]]
   name = "github.com/container-storage-interface/spec"
-  version = "0.2.0"
+  version = "0.3.0"
 
 [[constraint]]
   branch = "master"
@@ -11,8 +11,8 @@
   version = "0.19.0"
 
 [[constraint]]
+  branch = "master"
   name = "github.com/kubernetes-csi/csi-test"
-  version = "0.2.0-1"
 
 [[constraint]]
   branch = "master"

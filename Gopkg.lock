@@ -42,14 +42,14 @@
     "service/s3",
     "service/sts"
   ]
-  revision = "9e9afa0895e9daff556cc18f90dc53eb91f41ffd"
-  version = "v1.14.26"
+  revision = "94b80148ea4b1b136682116294b151766a3b85c2"
+  version = "v1.14.27"
 
 [[projects]]
   name = "github.com/container-storage-interface/spec"
   packages = ["lib/go/csi/v0"]
-  revision = "35d9f9d77954980e449e52c3f3e43c21bd8171f5"
-  version = "v0.2.0"
+  revision = "2178fdeea87f1150a17a63252eee28d4d8141f72"
+  version = "v0.3.0"
 
 [[projects]]
   branch = "master"
@@ -85,7 +85,8 @@
     "ptypes",
     "ptypes/any",
     "ptypes/duration",
-    "ptypes/timestamp"
+    "ptypes/timestamp",
+    "ptypes/wrappers"
   ]
   revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
   version = "v1.1.0"
@@ -124,19 +125,19 @@
   version = "v0.19.0"
 
 [[projects]]
+  branch = "master"
   name = "github.com/kubernetes-csi/csi-test"
   packages = [
     "pkg/sanity",
     "utils"
   ]
-  revision = "f8ada4fcf7755cf7a941ac49d0bda967bce403dc"
-  version = "v0.2.0-1"
+  revision = "6fed82d24d3a04c1814440d4178e7bf8ae9e67e6"
 
 [[projects]]
   branch = "master"
   name = "github.com/kubernetes-csi/drivers"
   packages = ["pkg/csi-common"]
-  revision = "62ceb085795bd1564e3b2d2627b3ac78868bac70"
+  revision = "d8f283cd941f1e24e20e62653476a3722633f43e"
 
 [[projects]]
   name = "github.com/minio/minio-go"
@@ -260,7 +261,7 @@
     "unix",
     "windows"
   ]
-  revision = "1b2967e3c290b7c545b3db0deeda16e9be4f98a2"
+  revision = "ac767d655b305d4e9612f5f6e33120b9176c4ad4"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -299,7 +300,7 @@
   branch = "master"
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
-  revision = "e92b116572682a5b432ddd840aeaba2a559eeff1"
+  revision = "2731d4fa720b67f9fe38e9051a2a9b38e4609260"
 
 [[projects]]
   name = "google.golang.org/grpc"
@@ -343,7 +344,7 @@
   branch = "master"
   name = "k8s.io/apimachinery"
   packages = ["pkg/util/sets"]
-  revision = "5e3c3f9281db3188d57785c1f6afe5eb504ede4f"
+  revision = "705cfa51a97f837a6599d463e2e206ad65903b60"
 
 [[projects]]
   name = "k8s.io/kubernetes"
@@ -365,6 +366,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "f6360459d7056129f05640afbb0858a78e1011e64f057d439ef950f9ab11283f"
+  inputs-digest = "6af116857c3619ed6bf4a8c17b479733db2897293cb13de205ece61f7726b2f4"
   solver-name = "gps-cdcl"
   solver-version = 1
