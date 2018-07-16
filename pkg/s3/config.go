@@ -6,4 +6,6 @@ type Config struct {
 	SecretAccessKey string
 	Region          string
 	Endpoint        string
+	Mounter         string
+	EncryptionKey   string
 }

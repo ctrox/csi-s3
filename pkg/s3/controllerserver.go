@@ -60,6 +60,16 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			return nil, err
 		}
 	}
+	mounter := cs.s3.cfg.Mounter
+	if mounter == "" {
+		mounter = req.GetParameters()[mounterKey]
+	}
+	switch mounter {
+	case s3qlMounter:
+		if err := s3qlCreate(volumeID, cs.s3.cfg); err != nil {
+			return nil, err
+		}
+	}
 
 	glog.V(4).Infof("create volume %s", volumeID)
 	s3Vol := s3Volume{}
@@ -123,6 +133,10 @@ func (cs *controllerServer) ValidateVolumeCapabilities(ctx context.Context, req 
 		return nil, status.Error(codes.NotFound, fmt.Sprintf("Volume with id %s does not exist", req.GetVolumeId()))
 	}
 
-	// We currently support all capabilities
-	return &csi.ValidateVolumeCapabilitiesResponse{Supported: true}, nil
+	for _, cap := range req.VolumeCapabilities {
+		if cap.GetAccessMode().GetMode() != csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER {
+			return &csi.ValidateVolumeCapabilitiesResponse{Supported: false, Message: ""}, nil
+		}
+	}
+	return &csi.ValidateVolumeCapabilitiesResponse{Supported: true, Message: ""}, nil
 }

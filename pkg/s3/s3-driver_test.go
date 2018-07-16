@@ -36,6 +36,7 @@ func TestDriver(t *testing.T) {
 		AccessKeyID:     "FJDSJ",
 		SecretAccessKey: "DSG643HGDS",
 		Endpoint:        "http://127.0.0.1:9000",
+		EncryptionKey:   "IskEwCuEg6drywi",
 	}
 	driver, err := NewS3("test-node", endpoint, cfg)
 	if err != nil {

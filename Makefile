@@ -16,7 +16,7 @@
 PROJECT_DIR=/go/src/github.com/ctrox/csi-s3-driver
 REGISTRY_NAME=ctrox
 IMAGE_NAME=csi-s3-driver
-IMAGE_VERSION=0.1.0
+IMAGE_VERSION=0.2.0
 IMAGE_TAG=$(REGISTRY_NAME)/$(IMAGE_NAME):$(IMAGE_VERSION)
 TEST_IMAGE_TAG=$(REGISTRY_NAME)/$(IMAGE_NAME):test
 
@@ -27,7 +27,7 @@ test:
 	docker build -t $(TEST_IMAGE_TAG) -f test/Dockerfile .
 	docker run --rm --privileged -v $(PWD):$(PROJECT_DIR):ro -v /dev:/dev $(TEST_IMAGE_TAG)
 container: build
-	docker build -t $(IMAGE_TAG) -f cmd/s3driver/Dockerfile .
+	docker build -t $(IMAGE_TAG) -f cmd/s3driver/Dockerfile.s3ql .
 push: container
 	docker push $(IMAGE_TAG)
 clean:

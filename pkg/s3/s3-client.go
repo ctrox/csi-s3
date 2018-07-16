@@ -17,10 +17,6 @@ type s3Client struct {
 	minio *minio.Client
 }
 
-type bucketMetadata struct {
-	CapacityBytes int64
-}
-
 func newS3Client(cfg *Config) (*s3Client, error) {
 	var client = &s3Client{}
 

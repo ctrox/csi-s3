@@ -79,7 +79,7 @@ spec:
             - name: socket-dir
               mountPath: /var/lib/kubelet/plugins/ch.ctrox.csi.s3-driver
         - name: s3-csi-driver
-          image: ctrox/csi-s3-driver:0.1.0
+          image: ctrox/csi-s3-driver:0.2.0
           args:
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--nodeid=$(NODE_ID)"
@@ -87,6 +87,7 @@ spec:
             - "--secret-access-key=$(SECRET_ACCESS_KEY)"
             - "--s3-endpoint=$(S3_ENDPOINT)"
             - "--region=$(REGION)"
+            - "--encryption-key=$(ENCRYPTION_KEY)"
             - "--v=4"
           env:
             - name: CSI_ENDPOINT
@@ -115,6 +116,11 @@ spec:
                 secretKeyRef:
                   name: csi-s3-secret
                   key: region
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: csi-s3-secret
+                  key: encryptionKey
           imagePullPolicy: "Always"
           volumeMounts:
             - name: socket-dir
