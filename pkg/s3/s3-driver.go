@@ -27,7 +27,7 @@ type s3 struct {
 	driver   *csicommon.CSIDriver
 	client   *s3Client
 	endpoint string
-	cr       *Credentials
+	cfg      *Config
 
 	ids *identityServer
 	ns  *nodeServer
@@ -47,13 +47,13 @@ var (
 )
 
 // NewS3 initializes the driver
-func NewS3(nodeID string, endpoint string, cr *Credentials) (*s3, error) {
+func NewS3(nodeID string, endpoint string, cfg *Config) (*s3, error) {
 	driver := csicommon.NewCSIDriver(driverName, vendorVersion, nodeID)
 	if driver == nil {
 		glog.Fatalln("Failed to initialize CSI Driver.")
 	}
 
-	client, err := newS3Client(cr)
+	client, err := newS3Client(cfg)
 	if err != nil {
 		glog.V(3).Infof("Failed to create s3 client: %v", err)
 		return nil, err
@@ -62,7 +62,7 @@ func NewS3(nodeID string, endpoint string, cr *Credentials) (*s3, error) {
 		endpoint: endpoint,
 		driver:   driver,
 		client:   client,
-		cr:       cr,
+		cfg:      cfg,
 	}
 	return s3Driver, nil
 }

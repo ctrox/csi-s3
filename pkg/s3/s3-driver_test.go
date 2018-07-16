@@ -32,12 +32,12 @@ func TestDriver(t *testing.T) {
 	if err := os.Remove(socket); err != nil && !os.IsNotExist(err) {
 		t.Fatalf("failed to remove unix domain socket file %s, error: %s", socket, err)
 	}
-	cr := &Credentials{
+	cfg := &Config{
 		AccessKeyID:     "FJDSJ",
 		SecretAccessKey: "DSG643HGDS",
 		Endpoint:        "http://127.0.0.1:9000",
 	}
-	driver, err := NewS3("test-node", endpoint, cr)
+	driver, err := NewS3("test-node", endpoint, cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -49,10 +49,10 @@ func TestDriver(t *testing.T) {
 	}
 	defer os.RemoveAll(mntDir)
 
-	cfg := &sanity.Config{
+	sanityCfg := &sanity.Config{
 		TargetPath: mntDir,
 		Address:    endpoint,
 	}
 
-	sanity.Test(t, cfg)
+	sanity.Test(t, sanityCfg)
 }

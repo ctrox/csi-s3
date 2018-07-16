@@ -13,7 +13,7 @@ const (
 )
 
 type s3Client struct {
-	cr    *Credentials
+	cfg   *Config
 	minio *minio.Client
 }
 
@@ -21,11 +21,11 @@ type bucketMetadata struct {
 	CapacityBytes int64
 }
 
-func newS3Client(cr *Credentials) (*s3Client, error) {
+func newS3Client(cfg *Config) (*s3Client, error) {
 	var client = &s3Client{}
 
-	client.cr = cr
-	u, err := url.Parse(client.cr.Endpoint)
+	client.cfg = cfg
+	u, err := url.Parse(client.cfg.Endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -34,7 +34,7 @@ func newS3Client(cr *Credentials) (*s3Client, error) {
 	if u.Port() != "" {
 		endpoint = u.Hostname() + ":" + u.Port()
 	}
-	minioClient, err := minio.New(endpoint, client.cr.AccessKeyID, client.cr.SecretAccessKey, ssl)
+	minioClient, err := minio.New(endpoint, client.cfg.AccessKeyID, client.cfg.SecretAccessKey, ssl)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +47,7 @@ func (client *s3Client) bucketExists(bucketName string) (bool, error) {
 }
 
 func (client *s3Client) createBucket(bucketName string) error {
-	return client.minio.MakeBucket(bucketName, client.cr.Region)
+	return client.minio.MakeBucket(bucketName, client.cfg.Region)
 }
 
 func (client *s3Client) removeBucket(bucketName string) error {

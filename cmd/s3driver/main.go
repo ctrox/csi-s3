@@ -40,14 +40,14 @@ var (
 func main() {
 	flag.Parse()
 
-	cr := &s3.Credentials{
+	cfg := &s3.Config{
 		AccessKeyID:     *accessKeyID,
 		SecretAccessKey: *secretAccessKey,
 		Endpoint:        *s3endpoint,
 		Region:          *region,
 	}
 
-	driver, err := s3.NewS3(*nodeID, *endpoint, cr)
+	driver, err := s3.NewS3(*nodeID, *endpoint, cfg)
 	if err != nil {
 		log.Fatal(err)
 	}

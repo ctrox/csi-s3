@@ -87,11 +87,11 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 
 	mounter, exists := attrib[mounterKey]
 	if !exists || mounter == s3fsMounter {
-		if err := s3fsMount(volumeID, ns.s3.cr, targetPath); err != nil {
+		if err := s3fsMount(volumeID, ns.s3.cfg, targetPath); err != nil {
 			return nil, err
 		}
 	} else if mounter == goofysMounter {
-		if err := goofysMount(volumeID, ns.s3.cr, targetPath); err != nil {
+		if err := goofysMount(volumeID, ns.s3.cfg, targetPath); err != nil {
 			return nil, err
 		}
 	} else {

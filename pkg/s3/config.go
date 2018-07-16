@@ -1,7 +1,7 @@
 package s3
 
-// Credentials holds s3 credentials and parameters
-type Credentials struct {
+// Config holds values to configure the driver
+type Config struct {
 	AccessKeyID     string
 	SecretAccessKey string
 	Region          string
