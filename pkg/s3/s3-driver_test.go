@@ -17,43 +17,13 @@ limitations under the License.
 package s3
 
 import (
-	"io/ioutil"
-	"log"
-	"os"
 	"testing"
 
-	"github.com/kubernetes-csi/csi-test/pkg/sanity"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
-func TestDriver(t *testing.T) {
-	socket := "/tmp/csi.sock"
-	endpoint := "unix://" + socket
-
-	if err := os.Remove(socket); err != nil && !os.IsNotExist(err) {
-		t.Fatalf("failed to remove unix domain socket file %s, error: %s", socket, err)
-	}
-	cfg := &Config{
-		AccessKeyID:     "FJDSJ",
-		SecretAccessKey: "DSG643HGDS",
-		Endpoint:        "http://127.0.0.1:9000",
-		EncryptionKey:   "IskEwCuEg6drywi",
-	}
-	driver, err := NewS3("test-node", endpoint, cfg)
-	if err != nil {
-		log.Fatal(err)
-	}
-	go driver.Run()
-
-	mntDir, err := ioutil.TempDir("", "mnt")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(mntDir)
-
-	sanityCfg := &sanity.Config{
-		TargetPath: mntDir,
-		Address:    endpoint,
-	}
-
-	sanity.Test(t, sanityCfg)
+func TestS3Driver(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "S3Driver")
 }
