@@ -5,7 +5,7 @@ ARG S3QL_VERSION=release-2.28
 
 RUN apt-get update && \
     apt-get install -y \
-      s3fs wget python3 python3-setuptools \
+      s3fs wget psmisc python3 python3-setuptools \
       python3-dev python3-pip python3-llfuse pkg-config \
       sqlite3 libsqlite3-dev python3-apsw cython && \
     rm -rf /var/lib/apt/lists/*

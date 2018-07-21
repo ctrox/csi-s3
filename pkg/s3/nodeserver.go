@@ -105,14 +105,14 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	if err != nil {
 		return nil, err
 	}
-	mounter.Unmount(req.GetTargetPath())
-	if err != nil {
+	if err := mounter.Unmount(req.GetTargetPath()); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	glog.V(4).Infof("s3: bucket %s has been unmounted.", req.GetVolumeId())
 
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
+
 func (ns *nodeServer) NodeStageVolume(
 	ctx context.Context,
 	req *csi.NodeStageVolumeRequest) (

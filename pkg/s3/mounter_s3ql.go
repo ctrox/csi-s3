@@ -80,10 +80,7 @@ func (s3ql *s3qlMounter) Mount(targetPath string) error {
 }
 
 func (s3ql *s3qlMounter) Unmount(targetPath string) error {
-	args := []string{
-		targetPath,
-	}
-	return s3qlCmd(s3qlCmdUnmount, append(args, s3ql.options...), nil)
+	return s3qlCmd(s3qlCmdUnmount, []string{targetPath}, nil)
 }
 
 func s3qlCmd(s3qlCmd string, args []string, stdin io.Reader) error {
