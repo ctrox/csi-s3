@@ -13,7 +13,8 @@ import (
 	"gopkg.in/ini.v1"
 )
 
-type s3fsConfig struct {
+// Implements Mounter
+type s3qlMounter struct {
 	url        string
 	bucketURL  string
 	login      string
@@ -29,7 +30,7 @@ const (
 	s3qlCmdMount = "mount.s3ql"
 )
 
-func newS3ql(bucket string, targetPath string, cfg *Config) (*s3fsConfig, error) {
+func newS3qlMounter(bucket string, cfg *Config) (Mounter, error) {
 	url, err := url.Parse(cfg.Endpoint)
 	if err != nil {
 		return nil, err
@@ -38,13 +39,12 @@ func newS3ql(bucket string, targetPath string, cfg *Config) (*s3fsConfig, error)
 	if strings.Contains(url.Scheme, "http") {
 		url.Scheme = "s3c"
 	}
-	s3ql := &s3fsConfig{
+	s3ql := &s3qlMounter{
 		url:        url.String(),
 		login:      cfg.AccessKeyID,
 		password:   cfg.SecretAccessKey,
 		passphrase: cfg.EncryptionKey,
 		ssl:        ssl,
-		targetPath: targetPath,
 	}
 
 	url.Path = path.Join(url.Path, bucket)
@@ -57,21 +57,25 @@ func newS3ql(bucket string, targetPath string, cfg *Config) (*s3fsConfig, error)
 	return s3ql, s3ql.writeConfig()
 }
 
-func s3qlCreate(bucket string, cfg *Config) error {
-	s3ql, err := newS3ql(bucket, "unknown", cfg)
-	if err != nil {
-		return err
+func (s3ql *s3qlMounter) Format() error {
+	// force creation to ignore existing data
+	args := []string{
+		s3ql.bucketURL,
+		"--force",
 	}
-	return s3ql.create()
+
+	p := fmt.Sprintf("%s\n%s\n", s3ql.passphrase, s3ql.passphrase)
+	reader := bytes.NewReader([]byte(p))
+	return s3qlCmd(s3qlCmdMkfs, append(args, s3ql.options...), reader)
 }
 
-func s3qlMount(bucket string, cfg *Config, targetPath string) error {
-	s3ql, err := newS3ql(bucket, targetPath, cfg)
-	if err != nil {
-		return err
+func (s3ql *s3qlMounter) Mount(targetPath string) error {
+	args := []string{
+		s3ql.bucketURL,
+		targetPath,
+		"--allow-other",
 	}
-
-	return s3ql.mount()
+	return s3qlCmd(s3qlCmdMount, append(args, s3ql.options...), nil)
 }
 
 func s3qlCmd(s3qlCmd string, args []string, stdin io.Reader) error {
@@ -87,38 +91,17 @@ func s3qlCmd(s3qlCmd string, args []string, stdin io.Reader) error {
 	return nil
 }
 
-func (cfg *s3fsConfig) create() error {
-	// force creation to ignore existing data
-	args := []string{
-		cfg.bucketURL,
-		"--force",
-	}
-
-	p := fmt.Sprintf("%s\n%s\n", cfg.passphrase, cfg.passphrase)
-	reader := bytes.NewReader([]byte(p))
-	return s3qlCmd(s3qlCmdMkfs, append(args, cfg.options...), reader)
-}
-
-func (cfg *s3fsConfig) mount() error {
-	args := []string{
-		cfg.bucketURL,
-		cfg.targetPath,
-		"--allow-other",
-	}
-	return s3qlCmd(s3qlCmdMount, append(args, cfg.options...), nil)
-}
-
-func (cfg *s3fsConfig) writeConfig() error {
+func (s3ql *s3qlMounter) writeConfig() error {
 	s3qlIni := ini.Empty()
 	section, err := s3qlIni.NewSection("s3ql")
 	if err != nil {
 		return err
 	}
 
-	section.NewKey("storage-url", cfg.url)
-	section.NewKey("backend-login", cfg.login)
-	section.NewKey("backend-password", cfg.password)
-	section.NewKey("fs-passphrase", cfg.passphrase)
+	section.NewKey("storage-url", s3ql.url)
+	section.NewKey("backend-login", s3ql.login)
+	section.NewKey("backend-password", s3ql.password)
+	section.NewKey("fs-passphrase", s3ql.passphrase)
 
 	authDir := os.Getenv("HOME") + "/.s3ql"
 	authFile := authDir + "/authinfo2"

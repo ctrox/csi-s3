@@ -17,7 +17,6 @@ limitations under the License.
 package s3
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/golang/glog"
@@ -29,13 +28,6 @@ import (
 	"k8s.io/kubernetes/pkg/util/mount"
 
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
-)
-
-const (
-	mounterKey    = "mounter"
-	s3fsMounter   = "s3fs"
-	goofysMounter = "goofys"
-	s3qlMounter   = "s3ql"
 )
 
 type nodeServer struct {
@@ -86,26 +78,16 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	glog.V(4).Infof("target %v\ndevice %v\nreadonly %v\nvolumeId %v\nattributes %v\nmountflags %v\n",
 		targetPath, deviceID, readOnly, volumeID, attrib, mountFlags)
 
-	mounter := ns.s3.cfg.Mounter
-	if mounter == "" {
-		mounter = attrib[mounterKey]
+	mounterType := ns.s3.cfg.Mounter
+	if mounterType == "" {
+		mounterType = attrib[mounterKey]
 	}
-	switch mounter {
-	case "":
-	case s3fsMounter:
-		if err := s3fsMount(volumeID, ns.s3.cfg, targetPath); err != nil {
-			return nil, err
-		}
-	case goofysMounter:
-		if err := goofysMount(volumeID, ns.s3.cfg, targetPath); err != nil {
-			return nil, err
-		}
-	case s3qlMounter:
-		if err := s3qlMount(volumeID, ns.s3.cfg, targetPath); err != nil {
-			return nil, err
-		}
-	default:
-		return nil, fmt.Errorf("Error mounting bucket %s, invalid mounter specified: %s", volumeID, ns.s3.cfg.Mounter)
+	mounter, err := newMounter(mounterType, volumeID, ns.s3.cfg)
+	if err != nil {
+		return nil, err
+	}
+	if err := mounter.Mount(targetPath); err != nil {
+		return nil, err
 	}
 
 	glog.V(4).Infof("s3: bucket %s successfuly mounted to %s", volumeID, targetPath)

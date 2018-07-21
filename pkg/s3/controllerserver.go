@@ -55,20 +55,21 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, err
 	}
 	if !exists {
-		if err := cs.s3.client.createBucket(volumeID); err != nil {
+		if err = cs.s3.client.createBucket(volumeID); err != nil {
 			glog.V(3).Infof("failed to create volume: %v", err)
 			return nil, err
 		}
 	}
-	mounter := cs.s3.cfg.Mounter
-	if mounter == "" {
-		mounter = req.GetParameters()[mounterKey]
+	mounterType := cs.s3.cfg.Mounter
+	if mounterType == "" {
+		mounterType = req.GetParameters()[mounterKey]
 	}
-	switch mounter {
-	case s3qlMounter:
-		if err := s3qlCreate(volumeID, cs.s3.cfg); err != nil {
-			return nil, err
-		}
+	mounter, err := newMounter(mounterType, volumeID, cs.s3.cfg)
+	if err != nil {
+		return nil, err
+	}
+	if err := mounter.Format(); err != nil {
+		return nil, err
 	}
 
 	glog.V(4).Infof("create volume %s", volumeID)
