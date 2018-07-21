@@ -78,11 +78,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	glog.V(4).Infof("target %v\ndevice %v\nreadonly %v\nvolumeId %v\nattributes %v\nmountflags %v\n",
 		targetPath, deviceID, readOnly, volumeID, attrib, mountFlags)
 
-	mounterType := ns.s3.cfg.Mounter
-	if mounterType == "" {
-		mounterType = attrib[mounterKey]
-	}
-	mounter, err := newMounter(mounterType, volumeID, ns.s3.cfg)
+	mounter, err := newMounter(volumeID, ns.s3.cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +101,11 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		return nil, status.Error(codes.InvalidArgument, "Target path missing in request")
 	}
 
-	err := mount.New("").Unmount(req.GetTargetPath())
+	mounter, err := newMounter(req.GetVolumeId(), ns.s3.cfg)
+	if err != nil {
+		return nil, err
+	}
+	mounter.Unmount(req.GetTargetPath())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}

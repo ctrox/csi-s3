@@ -60,11 +60,8 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			return nil, err
 		}
 	}
-	mounterType := cs.s3.cfg.Mounter
-	if mounterType == "" {
-		mounterType = req.GetParameters()[mounterKey]
-	}
-	mounter, err := newMounter(mounterType, volumeID, cs.s3.cfg)
+
+	mounter, err := newMounter(volumeID, cs.s3.cfg)
 	if err != nil {
 		return nil, err
 	}

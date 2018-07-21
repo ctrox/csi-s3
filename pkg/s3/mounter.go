@@ -7,19 +7,18 @@ import "fmt"
 type Mounter interface {
 	Format() error
 	Mount(targetPath string) error
+	Unmount(targetPath string) error
 }
 
 const (
-	mounterKey        = "mounter"
 	s3fsMounterType   = "s3fs"
 	goofysMounterType = "goofys"
 	s3qlMounterType   = "s3ql"
 )
 
 // newMounter returns a new mounter depending on the mounterType parameter
-func newMounter(mounterType string, bucket string, cfg *Config) (Mounter, error) {
-	switch mounterType {
-	case "":
+func newMounter(bucket string, cfg *Config) (Mounter, error) {
+	switch cfg.Mounter {
 	case s3fsMounterType:
 		return newS3fsMounter(bucket, cfg)
 
@@ -30,5 +29,5 @@ func newMounter(mounterType string, bucket string, cfg *Config) (Mounter, error)
 		return newS3qlMounter(bucket, cfg)
 
 	}
-	return nil, fmt.Errorf("Error mounting bucket %s, invalid mounter specified: %s", bucket, mounterType)
+	return nil, fmt.Errorf("Error mounting bucket %s, invalid mounter specified: %s", bucket, cfg.Mounter)
 }

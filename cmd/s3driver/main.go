@@ -35,6 +35,7 @@ var (
 	secretAccessKey = flag.String("secret-access-key", "", "S3 Secret Access Key to use")
 	s3endpoint      = flag.String("s3-endpoint", "", "S3 Endpoint URL to use")
 	region          = flag.String("region", "", "S3 Region to use")
+	mounter         = flag.String("mounter", "s3fs", "Specify which Mounter to use")
 	encryptionKey   = flag.String("encryption-key", "", "Encryption key for file system (only used with s3ql)")
 )
 
@@ -46,6 +47,7 @@ func main() {
 		SecretAccessKey: *secretAccessKey,
 		Endpoint:        *s3endpoint,
 		Region:          *region,
+		Mounter:         *mounter,
 		EncryptionKey:   *encryptionKey,
 	}
 

@@ -26,8 +26,9 @@ type s3qlMounter struct {
 }
 
 const (
-	s3qlCmdMkfs  = "mkfs.s3ql"
-	s3qlCmdMount = "mount.s3ql"
+	s3qlCmdMkfs    = "mkfs.s3ql"
+	s3qlCmdMount   = "mount.s3ql"
+	s3qlCmdUnmount = "umount.s3ql"
 )
 
 func newS3qlMounter(bucket string, cfg *Config) (Mounter, error) {
@@ -76,6 +77,13 @@ func (s3ql *s3qlMounter) Mount(targetPath string) error {
 		"--allow-other",
 	}
 	return s3qlCmd(s3qlCmdMount, append(args, s3ql.options...), nil)
+}
+
+func (s3ql *s3qlMounter) Unmount(targetPath string) error {
+	args := []string{
+		targetPath,
+	}
+	return s3qlCmd(s3qlCmdUnmount, append(args, s3ql.options...), nil)
 }
 
 func s3qlCmd(s3qlCmd string, args []string, stdin io.Reader) error {

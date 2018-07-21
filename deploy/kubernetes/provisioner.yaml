@@ -87,6 +87,7 @@ spec:
             - "--secret-access-key=$(SECRET_ACCESS_KEY)"
             - "--s3-endpoint=$(S3_ENDPOINT)"
             - "--region=$(REGION)"
+            - "--mounter=$(MOUNTER)"
             - "--encryption-key=$(ENCRYPTION_KEY)"
             - "--v=4"
           env:
@@ -116,6 +117,11 @@ spec:
                 secretKeyRef:
                   name: csi-s3-secret
                   key: region
+            - name: MOUNTER
+              valueFrom:
+                secretKeyRef:
+                  name: csi-s3-secret
+                  key: mounter
             - name: ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:

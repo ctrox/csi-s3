@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+
+	"k8s.io/kubernetes/pkg/util/mount"
 )
 
 // Implements Mounter
@@ -47,6 +49,10 @@ func (s3fs *s3fsMounter) Mount(targetPath string) error {
 		return fmt.Errorf("Error mounting using s3fs, output: %s", out)
 	}
 	return nil
+}
+
+func (s3fs *s3fsMounter) Unmount(targetPath string) error {
+	return mount.New("").Unmount(targetPath)
 }
 
 func writes3fsPass(pwFileContent string) error {
