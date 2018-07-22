@@ -7,10 +7,12 @@ import (
 	"context"
 
 	goofysApi "github.com/kahing/goofys/api"
-	"k8s.io/kubernetes/pkg/util/mount"
 )
 
-const defaultRegion = "us-east-1"
+const (
+	goofysCmd     = "goofys"
+	defaultRegion = "us-east-1"
+)
 
 // Implements Mounter
 type goofysMounter struct {
@@ -64,5 +66,5 @@ func (goofys *goofysMounter) Mount(targetPath string) error {
 }
 
 func (goofys *goofysMounter) Unmount(targetPath string) error {
-	return mount.New("").Unmount(targetPath)
+	return fuseUnmount(targetPath, goofysCmd)
 }

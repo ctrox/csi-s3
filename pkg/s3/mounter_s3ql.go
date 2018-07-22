@@ -3,7 +3,6 @@ package s3
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"net/url"
 	"os"
 	"os/exec"
@@ -15,6 +14,7 @@ import (
 
 // Implements Mounter
 type s3qlMounter struct {
+	bucket     string
 	url        string
 	bucketURL  string
 	login      string
@@ -41,6 +41,7 @@ func newS3qlMounter(bucket string, cfg *Config) (Mounter, error) {
 		url.Scheme = "s3c"
 	}
 	s3ql := &s3qlMounter{
+		bucket:     bucket,
 		url:        url.String(),
 		login:      cfg.AccessKeyID,
 		password:   cfg.SecretAccessKey,
@@ -67,7 +68,14 @@ func (s3ql *s3qlMounter) Format() error {
 
 	p := fmt.Sprintf("%s\n%s\n", s3ql.passphrase, s3ql.passphrase)
 	reader := bytes.NewReader([]byte(p))
-	return s3qlCmd(s3qlCmdMkfs, append(args, s3ql.options...), reader)
+	cmd := exec.Command(s3qlCmdMkfs, append(args, s3ql.options...)...)
+	cmd.Stdin = reader
+
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("Error running s3ql command: %s", out)
+	}
+	return nil
 }
 
 func (s3ql *s3qlMounter) Mount(targetPath string) error {
@@ -76,24 +84,11 @@ func (s3ql *s3qlMounter) Mount(targetPath string) error {
 		targetPath,
 		"--allow-other",
 	}
-	return s3qlCmd(s3qlCmdMount, append(args, s3ql.options...), nil)
+	return fuseMount(targetPath, s3qlCmdMount, append(args, s3ql.options...))
 }
 
 func (s3ql *s3qlMounter) Unmount(targetPath string) error {
-	return s3qlCmd(s3qlCmdUnmount, []string{targetPath}, nil)
-}
-
-func s3qlCmd(s3qlCmd string, args []string, stdin io.Reader) error {
-	cmd := exec.Command(s3qlCmd, args...)
-	if stdin != nil {
-		cmd.Stdin = stdin
-	}
-
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("Error running s3ql command: %s", out)
-	}
-	return nil
+	return fuseUnmount(targetPath, s3qlCmdMount)
 }
 
 func (s3ql *s3qlMounter) writeConfig() error {

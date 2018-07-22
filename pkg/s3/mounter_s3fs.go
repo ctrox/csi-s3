@@ -3,9 +3,6 @@ package s3
 import (
 	"fmt"
 	"os"
-	"os/exec"
-
-	"k8s.io/kubernetes/pkg/util/mount"
 )
 
 // Implements Mounter
@@ -15,6 +12,10 @@ type s3fsMounter struct {
 	region        string
 	pwFileContent string
 }
+
+const (
+	s3fsCmd = "s3fs"
+)
 
 func newS3fsMounter(bucket string, cfg *Config) (Mounter, error) {
 	return &s3fsMounter{
@@ -43,16 +44,11 @@ func (s3fs *s3fsMounter) Mount(targetPath string) error {
 		"-o", "allow_other",
 		"-o", "mp_umask=000",
 	}
-	cmd := exec.Command("s3fs", args...)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("Error mounting using s3fs, output: %s", out)
-	}
-	return nil
+	return fuseMount(targetPath, s3fsCmd, args)
 }
 
 func (s3fs *s3fsMounter) Unmount(targetPath string) error {
-	return mount.New("").Unmount(targetPath)
+	return fuseUnmount(targetPath, s3fsCmd)
 }
 
 func writes3fsPass(pwFileContent string) error {
