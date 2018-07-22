@@ -1,4 +1,4 @@
-FROM golang:stretch
+FROM debian:stretch
 LABEL maintainers="Cyrill Troxler <cyrilltroxler@gmail.com>"
 LABEL description="s3 fuse csi plugin"
 ARG S3QL_VERSION=release-2.28
@@ -19,6 +19,5 @@ WORKDIR /usr/src/s3ql-${S3QL_VERSION}
 RUN python3 setup.py build_cython build_ext --inplace
 RUN python3 setup.py install
 
-RUN go get -u github.com/minio/minio && go install github.com/minio/minio/cmd
-
-CMD ["/go/src/github.com/ctrox/csi-s3-driver/test/test.sh"]
+COPY ./_output/s3driver /s3driver
+ENTRYPOINT ["/s3driver"]

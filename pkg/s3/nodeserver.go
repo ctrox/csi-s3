@@ -17,7 +17,6 @@ limitations under the License.
 package s3
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/golang/glog"
@@ -29,12 +28,6 @@ import (
 	"k8s.io/kubernetes/pkg/util/mount"
 
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
-)
-
-const (
-	mounterKey    = "mounter"
-	s3fsMounter   = "s3fs"
-	goofysMounter = "goofys"
 )
 
 type nodeServer struct {
@@ -85,17 +78,12 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	glog.V(4).Infof("target %v\ndevice %v\nreadonly %v\nvolumeId %v\nattributes %v\nmountflags %v\n",
 		targetPath, deviceID, readOnly, volumeID, attrib, mountFlags)
 
-	mounter, exists := attrib[mounterKey]
-	if !exists || mounter == s3fsMounter {
-		if err := s3fsMount(volumeID, ns.s3.cfg, targetPath); err != nil {
-			return nil, err
-		}
-	} else if mounter == goofysMounter {
-		if err := goofysMount(volumeID, ns.s3.cfg, targetPath); err != nil {
-			return nil, err
-		}
-	} else {
-		return nil, fmt.Errorf("Error mounting bucket %s, invalid mounter specified: %s", volumeID, mounter)
+	mounter, err := newMounter(volumeID, ns.s3.cfg)
+	if err != nil {
+		return nil, err
+	}
+	if err := mounter.Mount(targetPath); err != nil {
+		return nil, err
 	}
 
 	glog.V(4).Infof("s3: bucket %s successfuly mounted to %s", volumeID, targetPath)
@@ -113,8 +101,11 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		return nil, status.Error(codes.InvalidArgument, "Target path missing in request")
 	}
 
-	err := mount.New("").Unmount(req.GetTargetPath())
+	mounter, err := newMounter(req.GetVolumeId(), ns.s3.cfg)
 	if err != nil {
+		return nil, err
+	}
+	if err := mounter.Unmount(req.GetTargetPath()); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	glog.V(4).Infof("s3: bucket %s has been unmounted.", req.GetVolumeId())
@@ -122,28 +113,16 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
 
-func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
-
-	// Check arguments
-	if len(req.GetVolumeId()) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "Volume ID missing in request")
-	}
-	if len(req.GetStagingTargetPath()) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "Target path missing in request")
-	}
-
-	return &csi.NodeStageVolumeResponse{}, nil
+func (ns *nodeServer) NodeStageVolume(
+	ctx context.Context,
+	req *csi.NodeStageVolumeRequest) (
+	*csi.NodeStageVolumeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "")
 }
 
-func (ns *nodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
-
-	// Check arguments
-	if len(req.GetVolumeId()) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "Volume ID missing in request")
-	}
-	if len(req.GetStagingTargetPath()) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "Target path missing in request")
-	}
-
-	return &csi.NodeUnstageVolumeResponse{}, nil
+func (ns *nodeServer) NodeUnstageVolume(
+	ctx context.Context,
+	req *csi.NodeUnstageVolumeRequest) (
+	*csi.NodeUnstageVolumeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "")
 }
