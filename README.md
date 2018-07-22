@@ -1,6 +1,9 @@
 # CSI for S3
 This is a Container Storage Interface ([CSI](https://github.com/container-storage-interface/spec/blob/master/spec.md)) for S3 (or S3 compatible) storage. This can dynamically allocate buckets and mount them via a fuse mount into any container.
 
+# Status
+This is still very experimental and should not be used in any production environment. Unexpected data loss could occur depending on what mounter and S3 storage backend is being used.
+
 # Kubernetes installation
 ## Requirements
 * Kubernetes 1.10+
@@ -19,6 +22,12 @@ stringData:
   secretAccessKey: <YOUR_SECRET_ACCES_KEY>
   endpoint: <S3_ENDPOINT_URL
   region: <S3_REGION>
+  # specify which mounter to use
+  # can be set to s3fs, goofys or s3ql
+  mounter: <MOUNTER>
+  # Currently only for s3ql
+  # If not using s3ql, set it to ""
+  encryptionKey: <FS_ENCRYPTION_KEY>
 ```
 
 ## 2. Deploy the driver
@@ -62,20 +71,32 @@ If something does not work as expected, check the troubleshooting section below.
 
 # Additional configuration
 ## Mounter
-By default the driver will use [s3fs](https://github.com/s3fs-fuse/s3fs-fuse) to mount buckets. Alternatively you can configure the storage class to use [goofys](https://github.com/kahing/goofys) for mounting S3 buckets. Note that goofys has some drawbacks in regards to POSIX compliance but in return offers better Performance than s3fs.
+As seen in the deployment example above, the driver can be configured to use one of these mounters to mount buckets:
 
-To configure a storage class to use goofys, just set the `mounter` parameter to `goofys`
-```yaml
-kind: StorageClass
-apiVersion: storage.k8s.io/v1
-metadata:
-  name: csi-s3
-provisioner: ch.ctrox.csi.s3-driver
-parameters:
-  mounter: goofys
-  csiProvisionerSecretName: csi-s3-secret
-  csiProvisionerSecretNamespace: kube-system
-```
+* [s3fs](https://github.com/s3fs-fuse/s3fs-fuse)
+* [goofys](https://github.com/kahing/goofys)
+* [s3ql](https://github.com/s3ql/s3ql)
+
+All mounters have different strengths and weaknesses depending on your use case. Here are some characteristics which should help you choose a mounter:
+
+### s3fs
+* Large subset of POSIX
+* Files can be viewed normally with any S3 client
+* Does not support appends or random writes
+
+### goofys
+* Weak POSIX compatibility
+* Performance first
+* Files can be viewed normally with any S3 client
+* Does not support appends or random writes
+
+### s3ql
+* (Almost) full POSIX compatibility
+* Uses its own object format
+* Files are not readable with other S3 clients
+* Support appends
+* Supports compression before upload
+* Supports encryption before upload
 
 # Limitations
 As S3 is not a real file system there are some limitations to consider here. Depending on what mounter you are using, you will have different levels of POSIX compability. Also depending on what S3 storage backend you are using there are not always consistency guarantees. The detailed limitations can be found on the documentation of [s3fs](https://github.com/s3fs-fuse/s3fs-fuse#limitations) and [goofys](https://github.com/kahing/goofys#current-status).
