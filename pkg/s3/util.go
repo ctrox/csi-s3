@@ -17,6 +17,18 @@ func waitForProcess(p *os.Process, backoff int) error {
 	if backoff == 20 {
 		return fmt.Errorf("Timeout waiting for PID %v to end", p.Pid)
 	}
+	cmdLine, err := getCmdLine(p.Pid)
+	if err != nil {
+		glog.Warningf("Error checking cmdline of PID %v, assuming it is dead: %s", p.Pid, err)
+		return nil
+	}
+	if cmdLine == "" {
+		// ignore defunct processes
+		// TODO: debug why this happens in the first place
+		// seems to only happen on k8s, not on local docker
+		glog.Warning("Fuse process seems dead, returning")
+		return nil
+	}
 	if err := p.Signal(syscall.Signal(0)); err != nil {
 		glog.Warningf("Fuse process does not seem active or we are unprivileged: %s", err)
 		return nil
@@ -36,12 +48,6 @@ func findFuseMountProcess(path string, name string) (*os.Process, error) {
 			cmdLine, err := getCmdLine(p.Pid())
 			if err != nil {
 				glog.Errorf("Unable to get cmdline of PID %v: %s", p.Pid(), err)
-				continue
-			}
-			if cmdLine == "" {
-				// ignore defunct processes
-				// TODO: debug why this happens in the first place
-				// seems to only happen on k8s, not on local docker
 				continue
 			}
 			if strings.Contains(cmdLine, path) {
