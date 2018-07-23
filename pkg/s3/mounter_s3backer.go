@@ -148,6 +148,6 @@ func formatFs(fsType string, device string) error {
 	if err != nil {
 		return fmt.Errorf("Error formatting disk: %s", out)
 	}
-	glog.Info("Formatting fs with type %s, out: %s", fsType, out)
+	glog.Infof("Formatting fs with type %s", fsType)
 	return nil
 }
