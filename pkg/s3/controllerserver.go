@@ -61,14 +61,6 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		}
 	}
 
-	mounter, err := newMounter(volumeID, cs.s3.cfg)
-	if err != nil {
-		return nil, err
-	}
-	if err := mounter.Format(); err != nil {
-		return nil, err
-	}
-
 	glog.V(4).Infof("create volume %s", volumeID)
 	s3Vol := s3Volume{}
 	s3Vol.VolName = req.GetName()

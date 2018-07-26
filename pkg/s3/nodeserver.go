@@ -82,6 +82,9 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	if err != nil {
 		return nil, err
 	}
+	if err := mounter.Format(); err != nil {
+		return nil, err
+	}
 	if err := mounter.Mount(targetPath); err != nil {
 		return nil, err
 	}
