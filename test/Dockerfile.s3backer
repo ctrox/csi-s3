@@ -3,6 +3,7 @@ LABEL maintainers="Cyrill Troxler <cyrilltroxler@gmail.com>"
 LABEL description="s3 fuse csi plugin"
 
 RUN apt-get update && apt-get install -y \
+  s3fs \
   build-essential \
   autoconf \
   libcurl4-openssl-dev \
@@ -12,7 +13,8 @@ RUN apt-get update && apt-get install -y \
   zlib1g-dev \
   xfsprogs \
   psmisc \
-  git
+  git && \
+  rm -rf /var/lib/apt/lists/*
 
 RUN git clone https://github.com/archiecobbs/s3backer.git ./s3backer
 
