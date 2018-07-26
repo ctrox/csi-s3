@@ -15,13 +15,12 @@ import (
 const ()
 
 var _ = Describe("S3Driver", func() {
-	mntDir, err := ioutil.TempDir("", "mnt")
-	if err != nil {
-		Expect(err).NotTo(HaveOccurred())
-	}
+	mntDir, _ := ioutil.TempDir("", "mnt")
+	stagingDir, _ := ioutil.TempDir("", "staging")
 
 	AfterSuite(func() {
 		os.RemoveAll(mntDir)
+		os.RemoveAll(stagingDir)
 	})
 
 	Context("goofys", func() {
@@ -45,6 +44,7 @@ var _ = Describe("S3Driver", func() {
 		Describe("CSI sanity", func() {
 			sanityCfg := &sanity.Config{
 				TargetPath:     mntDir,
+				StagingPath:    stagingDir,
 				Address:        csiEndpoint,
 				TestVolumeSize: 1,
 			}
@@ -70,11 +70,10 @@ var _ = Describe("S3Driver", func() {
 		}
 		go driver.Run()
 
-		defer os.RemoveAll(mntDir)
-
 		Describe("CSI sanity", func() {
 			sanityCfg := &sanity.Config{
 				TargetPath:     mntDir,
+				StagingPath:    stagingDir,
 				Address:        csiEndpoint,
 				TestVolumeSize: 1,
 			}
@@ -106,6 +105,7 @@ var _ = Describe("S3Driver", func() {
 		Describe("CSI sanity", func() {
 			sanityCfg := &sanity.Config{
 				TargetPath:     mntDir,
+				StagingPath:    stagingDir,
 				Address:        csiEndpoint,
 				TestVolumeSize: 1,
 			}
@@ -132,11 +132,10 @@ var _ = Describe("S3Driver", func() {
 		}
 		go driver.Run()
 
-		defer os.RemoveAll(mntDir)
-
 		Describe("CSI sanity", func() {
 			sanityCfg := &sanity.Config{
 				TargetPath:     mntDir,
+				StagingPath:    stagingDir,
 				Address:        csiEndpoint,
 				TestVolumeSize: 1,
 			}

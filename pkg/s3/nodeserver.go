@@ -44,23 +44,19 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	if len(req.GetVolumeId()) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID missing in request")
 	}
+	if len(req.GetStagingTargetPath()) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Staging Target path missing in request")
+	}
 	if len(req.GetTargetPath()) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Target path missing in request")
 	}
 
 	targetPath := req.GetTargetPath()
-	notMnt, err := mount.New("").IsLikelyNotMountPoint(targetPath)
+	stagingPath := req.GetStagingTargetPath()
+	notMnt, err := checkMount(targetPath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			if err = os.MkdirAll(targetPath, 0750); err != nil {
-				return nil, status.Error(codes.Internal, err.Error())
-			}
-			notMnt = true
-		} else {
-			return nil, status.Error(codes.Internal, err.Error())
-		}
+		return nil, status.Error(codes.Internal, err.Error())
 	}
-
 	if !notMnt {
 		return &csi.NodePublishVolumeResponse{}, nil
 	}
@@ -82,10 +78,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	if err != nil {
 		return nil, err
 	}
-	if err := mounter.Format(); err != nil {
-		return nil, err
-	}
-	if err := mounter.Mount(targetPath); err != nil {
+	if err := mounter.Mount(stagingPath, targetPath); err != nil {
 		return nil, err
 	}
 
@@ -116,16 +109,91 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
 
-func (ns *nodeServer) NodeStageVolume(
-	ctx context.Context,
-	req *csi.NodeStageVolumeRequest) (
-	*csi.NodeStageVolumeResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "")
+func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
+
+	// Check arguments
+	if len(req.GetVolumeId()) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Volume ID missing in request")
+	}
+
+	if len(req.GetStagingTargetPath()) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Target path missing in request")
+	}
+
+	if req.VolumeCapability == nil {
+		return nil, status.Error(codes.InvalidArgument, "NodeStageVolume Volume Capability must be provided")
+	}
+
+	stagingPath := req.GetStagingTargetPath()
+	notMnt, err := checkMount(stagingPath)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	if !notMnt {
+		return &csi.NodeStageVolumeResponse{}, nil
+	}
+
+	mounter, err := newMounter(req.GetVolumeId(), ns.s3.cfg)
+	if err != nil {
+		return nil, err
+	}
+	if err := mounter.Stage(stagingPath); err != nil {
+		return nil, err
+	}
+
+	return &csi.NodeStageVolumeResponse{}, nil
 }
 
-func (ns *nodeServer) NodeUnstageVolume(
-	ctx context.Context,
-	req *csi.NodeUnstageVolumeRequest) (
-	*csi.NodeUnstageVolumeResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "")
+func (ns *nodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
+
+	// Check arguments
+	if len(req.GetVolumeId()) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Volume ID missing in request")
+	}
+	if len(req.GetStagingTargetPath()) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Target path missing in request")
+	}
+
+	mounter, err := newMounter(req.GetVolumeId(), ns.s3.cfg)
+	if err != nil {
+		return nil, err
+	}
+	if err := mounter.Unstage(req.GetStagingTargetPath()); err != nil {
+		return nil, err
+	}
+
+	return &csi.NodeUnstageVolumeResponse{}, nil
+}
+
+// NodeGetCapabilities returns the supported capabilities of the node server
+func (ns *nodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
+	// currently there is a single NodeServer capability according to the spec
+	nscap := &csi.NodeServiceCapability{
+		Type: &csi.NodeServiceCapability_Rpc{
+			Rpc: &csi.NodeServiceCapability_RPC{
+				Type: csi.NodeServiceCapability_RPC_STAGE_UNSTAGE_VOLUME,
+			},
+		},
+	}
+
+	return &csi.NodeGetCapabilitiesResponse{
+		Capabilities: []*csi.NodeServiceCapability{
+			nscap,
+		},
+	}, nil
+}
+
+func checkMount(targetPath string) (bool, error) {
+	notMnt, err := mount.New("").IsLikelyNotMountPoint(targetPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			if err = os.MkdirAll(targetPath, 0750); err != nil {
+				return false, err
+			}
+			notMnt = true
+		} else {
+			return false, err
+		}
+	}
+	return notMnt, nil
 }

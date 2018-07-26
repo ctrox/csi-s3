@@ -38,13 +38,17 @@ func newGoofysMounter(bucket string, cfg *Config) (Mounter, error) {
 	}, nil
 }
 
-func (goofys *goofysMounter) Format() error {
+func (goofys *goofysMounter) Stage(stageTarget string) error {
 	return nil
 }
 
-func (goofys *goofysMounter) Mount(targetPath string) error {
+func (goofys *goofysMounter) Unstage(stageTarget string) error {
+	return nil
+}
+
+func (goofys *goofysMounter) Mount(source string, target string) error {
 	goofysCfg := &goofysApi.Config{
-		MountPoint: targetPath,
+		MountPoint: target,
 		Endpoint:   goofys.endpoint,
 		Region:     goofys.region,
 		DirMode:    0755,

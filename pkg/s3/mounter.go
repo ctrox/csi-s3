@@ -11,9 +11,10 @@ import (
 // Mounter interface which can be implemented
 // by the different mounter types
 type Mounter interface {
-	Format() error
-	Mount(targetPath string) error
-	Unmount(targetPath string) error
+	Stage(stagePath string) error
+	Unstage(stagePath string) error
+	Mount(source string, target string) error
+	Unmount(target string) error
 }
 
 const (

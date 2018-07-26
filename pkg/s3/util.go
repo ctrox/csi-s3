@@ -55,7 +55,6 @@ func findFuseMountProcess(path string, name string) (*os.Process, error) {
 				return os.FindProcess(p.Pid())
 			}
 		}
-		fmt.Println(p.Executable())
 	}
 	return nil, nil
 }

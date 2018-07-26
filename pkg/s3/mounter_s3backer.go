@@ -2,7 +2,6 @@ package s3
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -19,14 +18,12 @@ type s3backerMounter struct {
 	accessKeyID     string
 	secretAccessKey string
 	size            int64
-	initMountPath   string
 }
 
 const (
-	s3backerCmd       = "s3backer"
-	s3backerFsType    = "xfs"
-	s3backerMountBase = "/mnt"
-	s3backerDevice    = "file"
+	s3backerCmd    = "s3backer"
+	s3backerFsType = "xfs"
+	s3backerDevice = "file"
 	// blockSize to use in k
 	s3backerBlockSize = "128k"
 )
@@ -38,7 +35,6 @@ func newS3backerMounter(bucket string, cfg *Config) (Mounter, error) {
 		region:          cfg.Region,
 		accessKeyID:     cfg.AccessKeyID,
 		secretAccessKey: cfg.SecretAccessKey,
-		initMountPath:   path.Join(s3backerMountBase, bucket),
 		size:            1024 * 1024 * 1024 * 10,
 	}
 
@@ -49,37 +45,32 @@ func (s3backer *s3backerMounter) String() string {
 	return s3backer.bucket
 }
 
-func (s3backer *s3backerMounter) Format() error {
-	tmpDir, err := ioutil.TempDir("", "s3backer")
-	if err != nil {
-		return err
-	}
-	defer os.RemoveAll(tmpDir)
-
-	if err := s3backer.mountInit(tmpDir); err != nil {
-		return err
-	}
-	defer fuseUnmount(tmpDir, s3backerCmd)
-
-	return formatFs(s3backerFsType, path.Join(tmpDir, s3backerDevice))
-}
-
-func (s3backer *s3backerMounter) Mount(targetPath string) error {
-	if err := os.MkdirAll(s3backer.initMountPath, 0700); err != nil {
-		return err
-	}
+func (s3backer *s3backerMounter) Stage(stageTarget string) error {
 	// s3backer requires two mounts
 	// first mount will fuse mount the bucket to a single 'file'
-	err := s3backer.mountInit(s3backer.initMountPath)
-	if err != nil {
+	if err := s3backer.mountInit(stageTarget); err != nil {
 		return err
 	}
-	device := path.Join(s3backer.initMountPath, s3backerDevice)
+	// ensure 'file' device is formatted
+	err := formatFs(s3backerFsType, path.Join(stageTarget, s3backerDevice))
+	if err != nil {
+		fuseUnmount(stageTarget, s3backerCmd)
+	}
+	return err
+}
+
+func (s3backer *s3backerMounter) Unstage(stageTarget string) error {
+	// Unmount the s3backer fuse mount
+	return fuseUnmount(stageTarget, s3backerCmd)
+}
+
+func (s3backer *s3backerMounter) Mount(source string, target string) error {
+	device := path.Join(source, s3backerDevice)
 	// second mount will mount the 'file' as a filesystem
-	err = mount.New("").Mount(device, targetPath, s3backerFsType, []string{})
+	err := mount.New("").Mount(device, target, s3backerFsType, []string{})
 	if err != nil {
 		// cleanup fuse mount
-		fuseUnmount(targetPath, s3backerCmd)
+		fuseUnmount(target, s3backerCmd)
 		return err
 	}
 	return nil
@@ -87,15 +78,7 @@ func (s3backer *s3backerMounter) Mount(targetPath string) error {
 
 func (s3backer *s3backerMounter) Unmount(targetPath string) error {
 	// Unmount the filesystem first
-	if err := mount.New("").Unmount(targetPath); err != nil {
-		return err
-	}
-	// Unmount the s3backer fuse mount
-	err := fuseUnmount(s3backer.initMountPath, s3backerCmd)
-	if err != nil {
-		return err
-	}
-	return nil
+	return mount.New("").Unmount(targetPath)
 }
 
 func (s3backer *s3backerMounter) mountInit(path string) error {

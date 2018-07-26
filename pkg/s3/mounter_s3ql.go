@@ -59,7 +59,7 @@ func newS3qlMounter(bucket string, cfg *Config) (Mounter, error) {
 	return s3ql, s3ql.writeConfig()
 }
 
-func (s3ql *s3qlMounter) Format() error {
+func (s3ql *s3qlMounter) Stage(stagePath string) error {
 	// force creation to ignore existing data
 	args := []string{
 		s3ql.bucketURL,
@@ -78,17 +78,21 @@ func (s3ql *s3qlMounter) Format() error {
 	return nil
 }
 
-func (s3ql *s3qlMounter) Mount(targetPath string) error {
-	args := []string{
-		s3ql.bucketURL,
-		targetPath,
-		"--allow-other",
-	}
-	return fuseMount(targetPath, s3qlCmdMount, append(args, s3ql.options...))
+func (s3ql *s3qlMounter) Unstage(stagePath string) error {
+	return nil
 }
 
-func (s3ql *s3qlMounter) Unmount(targetPath string) error {
-	return fuseUnmount(targetPath, s3qlCmdMount)
+func (s3ql *s3qlMounter) Mount(source string, target string) error {
+	args := []string{
+		s3ql.bucketURL,
+		target,
+		"--allow-other",
+	}
+	return fuseMount(target, s3qlCmdMount, append(args, s3ql.options...))
+}
+
+func (s3ql *s3qlMounter) Unmount(target string) error {
+	return fuseUnmount(target, s3qlCmdMount)
 }
 
 func (s3ql *s3qlMounter) writeConfig() error {

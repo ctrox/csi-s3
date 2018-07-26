@@ -26,17 +26,21 @@ func newS3fsMounter(bucket string, cfg *Config) (Mounter, error) {
 	}, nil
 }
 
-func (s3fs *s3fsMounter) Format() error {
+func (s3fs *s3fsMounter) Stage(stageTarget string) error {
 	return nil
 }
 
-func (s3fs *s3fsMounter) Mount(targetPath string) error {
+func (s3fs *s3fsMounter) Unstage(stageTarget string) error {
+	return nil
+}
+
+func (s3fs *s3fsMounter) Mount(source string, target string) error {
 	if err := writes3fsPass(s3fs.pwFileContent); err != nil {
 		return err
 	}
 	args := []string{
 		fmt.Sprintf("%s", s3fs.bucket),
-		fmt.Sprintf("%s", targetPath),
+		fmt.Sprintf("%s", target),
 		"-o", "sigv2",
 		"-o", "use_path_request_style",
 		"-o", fmt.Sprintf("url=%s", s3fs.url),
@@ -44,11 +48,11 @@ func (s3fs *s3fsMounter) Mount(targetPath string) error {
 		"-o", "allow_other",
 		"-o", "mp_umask=000",
 	}
-	return fuseMount(targetPath, s3fsCmd, args)
+	return fuseMount(target, s3fsCmd, args)
 }
 
-func (s3fs *s3fsMounter) Unmount(targetPath string) error {
-	return fuseUnmount(targetPath, s3fsCmd)
+func (s3fs *s3fsMounter) Unmount(target string) error {
+	return fuseUnmount(target, s3fsCmd)
 }
 
 func writes3fsPass(pwFileContent string) error {
