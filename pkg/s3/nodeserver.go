@@ -36,23 +36,24 @@ type nodeServer struct {
 }
 
 func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
+	volumeID := req.GetVolumeId()
+	targetPath := req.GetTargetPath()
+	stagingTargetPath := req.GetStagingTargetPath()
 
 	// Check arguments
 	if req.GetVolumeCapability() == nil {
 		return nil, status.Error(codes.InvalidArgument, "Volume capability missing in request")
 	}
-	if len(req.GetVolumeId()) == 0 {
+	if len(volumeID) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID missing in request")
 	}
-	if len(req.GetStagingTargetPath()) == 0 {
+	if len(stagingTargetPath) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Staging Target path missing in request")
 	}
-	if len(req.GetTargetPath()) == 0 {
+	if len(targetPath) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Target path missing in request")
 	}
 
-	targetPath := req.GetTargetPath()
-	stagingPath := req.GetStagingTargetPath()
 	notMnt, err := checkMount(targetPath)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -66,57 +67,70 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		deviceID = req.GetPublishInfo()[deviceID]
 	}
 
+	// TODO: Implement readOnly & mountFlags
 	readOnly := req.GetReadonly()
-	volumeID := req.GetVolumeId()
 	attrib := req.GetVolumeAttributes()
 	mountFlags := req.GetVolumeCapability().GetMount().GetMountFlags()
 
 	glog.V(4).Infof("target %v\ndevice %v\nreadonly %v\nvolumeId %v\nattributes %v\nmountflags %v\n",
 		targetPath, deviceID, readOnly, volumeID, attrib, mountFlags)
 
-	mounter, err := newMounter(volumeID, ns.s3.cfg)
+	b, err := ns.s3.client.getBucket(volumeID)
 	if err != nil {
 		return nil, err
 	}
-	if err := mounter.Mount(stagingPath, targetPath); err != nil {
+
+	mounter, err := newMounter(b, ns.s3.cfg)
+	if err != nil {
+		return nil, err
+	}
+	if err := mounter.Mount(stagingTargetPath, targetPath); err != nil {
 		return nil, err
 	}
 
-	glog.V(4).Infof("s3: bucket %s successfuly mounted to %s", volumeID, targetPath)
+	glog.V(4).Infof("s3: bucket %s successfuly mounted to %s", b.Name, targetPath)
 
 	return &csi.NodePublishVolumeResponse{}, nil
 }
 
 func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
+	volumeID := req.GetVolumeId()
+	targetPath := req.GetTargetPath()
 
 	// Check arguments
-	if len(req.GetVolumeId()) == 0 {
+	if len(volumeID) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID missing in request")
 	}
-	if len(req.GetTargetPath()) == 0 {
+	if len(targetPath) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Target path missing in request")
 	}
 
-	mounter, err := newMounter(req.GetVolumeId(), ns.s3.cfg)
+	b, err := ns.s3.client.getBucket(volumeID)
 	if err != nil {
 		return nil, err
 	}
-	if err := mounter.Unmount(req.GetTargetPath()); err != nil {
+	mounter, err := newMounter(b, ns.s3.cfg)
+	if err != nil {
+		return nil, err
+	}
+	if err := mounter.Unmount(targetPath); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	glog.V(4).Infof("s3: bucket %s has been unmounted.", req.GetVolumeId())
+	glog.V(4).Infof("s3: bucket %s has been unmounted.", volumeID)
 
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
 
 func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
+	volumeID := req.GetVolumeId()
+	stagingTargetPath := req.GetStagingTargetPath()
 
 	// Check arguments
-	if len(req.GetVolumeId()) == 0 {
+	if len(volumeID) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID missing in request")
 	}
 
-	if len(req.GetStagingTargetPath()) == 0 {
+	if len(stagingTargetPath) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Target path missing in request")
 	}
 
@@ -124,20 +138,23 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 		return nil, status.Error(codes.InvalidArgument, "NodeStageVolume Volume Capability must be provided")
 	}
 
-	stagingPath := req.GetStagingTargetPath()
-	notMnt, err := checkMount(stagingPath)
+	notMnt, err := checkMount(stagingTargetPath)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if !notMnt {
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
-
-	mounter, err := newMounter(req.GetVolumeId(), ns.s3.cfg)
+	b, err := ns.s3.client.getBucket(volumeID)
 	if err != nil {
 		return nil, err
 	}
-	if err := mounter.Stage(stagingPath); err != nil {
+
+	mounter, err := newMounter(b, ns.s3.cfg)
+	if err != nil {
+		return nil, err
+	}
+	if err := mounter.Stage(stagingTargetPath); err != nil {
 		return nil, err
 	}
 
@@ -145,20 +162,26 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 }
 
 func (ns *nodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
+	volumeID := req.GetVolumeId()
+	stagingTargetPath := req.GetStagingTargetPath()
 
 	// Check arguments
-	if len(req.GetVolumeId()) == 0 {
+	if len(volumeID) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID missing in request")
 	}
-	if len(req.GetStagingTargetPath()) == 0 {
+	if len(stagingTargetPath) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Target path missing in request")
 	}
 
-	mounter, err := newMounter(req.GetVolumeId(), ns.s3.cfg)
+	b, err := ns.s3.client.getBucket(volumeID)
 	if err != nil {
 		return nil, err
 	}
-	if err := mounter.Unstage(req.GetStagingTargetPath()); err != nil {
+	mounter, err := newMounter(b, ns.s3.cfg)
+	if err != nil {
+		return nil, err
+	}
+	if err := mounter.Unstage(stagingTargetPath); err != nil {
 		return nil, err
 	}
 

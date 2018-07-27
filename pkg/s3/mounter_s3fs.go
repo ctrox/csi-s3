@@ -7,7 +7,7 @@ import (
 
 // Implements Mounter
 type s3fsMounter struct {
-	bucket        string
+	bucket        *bucket
 	url           string
 	region        string
 	pwFileContent string
@@ -17,9 +17,9 @@ const (
 	s3fsCmd = "s3fs"
 )
 
-func newS3fsMounter(bucket string, cfg *Config) (Mounter, error) {
+func newS3fsMounter(b *bucket, cfg *Config) (Mounter, error) {
 	return &s3fsMounter{
-		bucket:        bucket,
+		bucket:        b,
 		url:           cfg.Endpoint,
 		region:        cfg.Region,
 		pwFileContent: cfg.AccessKeyID + ":" + cfg.SecretAccessKey,
@@ -39,7 +39,7 @@ func (s3fs *s3fsMounter) Mount(source string, target string) error {
 		return err
 	}
 	args := []string{
-		fmt.Sprintf("%s", s3fs.bucket),
+		fmt.Sprintf("%s", s3fs.bucket.Name),
 		fmt.Sprintf("%s", target),
 		"-o", "sigv2",
 		"-o", "use_path_request_style",

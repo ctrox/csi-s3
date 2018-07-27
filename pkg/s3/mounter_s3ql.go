@@ -14,7 +14,7 @@ import (
 
 // Implements Mounter
 type s3qlMounter struct {
-	bucket     string
+	bucket     *bucket
 	url        string
 	bucketURL  string
 	login      string
@@ -31,7 +31,7 @@ const (
 	s3qlCmdUnmount = "umount.s3ql"
 )
 
-func newS3qlMounter(bucket string, cfg *Config) (Mounter, error) {
+func newS3qlMounter(b *bucket, cfg *Config) (Mounter, error) {
 	url, err := url.Parse(cfg.Endpoint)
 	if err != nil {
 		return nil, err
@@ -41,7 +41,7 @@ func newS3qlMounter(bucket string, cfg *Config) (Mounter, error) {
 		url.Scheme = "s3c"
 	}
 	s3ql := &s3qlMounter{
-		bucket:     bucket,
+		bucket:     b,
 		url:        url.String(),
 		login:      cfg.AccessKeyID,
 		password:   cfg.SecretAccessKey,
@@ -49,7 +49,7 @@ func newS3qlMounter(bucket string, cfg *Config) (Mounter, error) {
 		ssl:        ssl,
 	}
 
-	url.Path = path.Join(url.Path, bucket)
+	url.Path = path.Join(url.Path, b.Name)
 	s3ql.bucketURL = url.String()
 
 	if !ssl {

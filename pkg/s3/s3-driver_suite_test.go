@@ -12,8 +12,6 @@ import (
 	"github.com/kubernetes-csi/csi-test/pkg/sanity"
 )
 
-const ()
-
 var _ = Describe("S3Driver", func() {
 	mntDir, _ := ioutil.TempDir("", "mnt")
 	stagingDir, _ := ioutil.TempDir("", "staging")
@@ -43,10 +41,9 @@ var _ = Describe("S3Driver", func() {
 
 		Describe("CSI sanity", func() {
 			sanityCfg := &sanity.Config{
-				TargetPath:     mntDir,
-				StagingPath:    stagingDir,
-				Address:        csiEndpoint,
-				TestVolumeSize: 1,
+				TargetPath:  mntDir,
+				StagingPath: stagingDir,
+				Address:     csiEndpoint,
 			}
 			sanity.GinkgoTest(sanityCfg)
 		})
@@ -72,10 +69,9 @@ var _ = Describe("S3Driver", func() {
 
 		Describe("CSI sanity", func() {
 			sanityCfg := &sanity.Config{
-				TargetPath:     mntDir,
-				StagingPath:    stagingDir,
-				Address:        csiEndpoint,
-				TestVolumeSize: 1,
+				TargetPath:  mntDir,
+				StagingPath: stagingDir,
+				Address:     csiEndpoint,
 			}
 			sanity.GinkgoTest(sanityCfg)
 		})
@@ -104,10 +100,9 @@ var _ = Describe("S3Driver", func() {
 
 		Describe("CSI sanity", func() {
 			sanityCfg := &sanity.Config{
-				TargetPath:     mntDir,
-				StagingPath:    stagingDir,
-				Address:        csiEndpoint,
-				TestVolumeSize: 1,
+				TargetPath:  mntDir,
+				StagingPath: stagingDir,
+				Address:     csiEndpoint,
 			}
 			sanity.GinkgoTest(sanityCfg)
 		})
@@ -134,10 +129,9 @@ var _ = Describe("S3Driver", func() {
 
 		Describe("CSI sanity", func() {
 			sanityCfg := &sanity.Config{
-				TargetPath:     mntDir,
-				StagingPath:    stagingDir,
-				Address:        csiEndpoint,
-				TestVolumeSize: 1,
+				TargetPath:  mntDir,
+				StagingPath: stagingDir,
+				Address:     csiEndpoint,
 			}
 			sanity.GinkgoTest(sanityCfg)
 		})

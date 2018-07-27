@@ -12,12 +12,11 @@ import (
 
 // Implements Mounter
 type s3backerMounter struct {
-	bucket          string
+	bucket          *bucket
 	url             string
 	region          string
 	accessKeyID     string
 	secretAccessKey string
-	size            int64
 }
 
 const (
@@ -25,24 +24,28 @@ const (
 	s3backerFsType = "xfs"
 	s3backerDevice = "file"
 	// blockSize to use in k
-	s3backerBlockSize = "128k"
+	s3backerBlockSize   = "128k"
+	s3backerDefaultSize = 1024 * 1024 * 1024 // 1GiB
 )
 
-func newS3backerMounter(bucket string, cfg *Config) (Mounter, error) {
+func newS3backerMounter(bucket *bucket, cfg *Config) (Mounter, error) {
+	// s3backer cannot work with 0 size volumes
+	if bucket.CapacityBytes == 0 {
+		bucket.CapacityBytes = s3backerDefaultSize
+	}
 	s3backer := &s3backerMounter{
 		bucket:          bucket,
 		url:             cfg.Endpoint,
 		region:          cfg.Region,
 		accessKeyID:     cfg.AccessKeyID,
 		secretAccessKey: cfg.SecretAccessKey,
-		size:            1024 * 1024 * 1024 * 10,
 	}
 
 	return s3backer, s3backer.writePasswd()
 }
 
 func (s3backer *s3backerMounter) String() string {
-	return s3backer.bucket
+	return s3backer.bucket.Name
 }
 
 func (s3backer *s3backerMounter) Stage(stageTarget string) error {
@@ -86,9 +89,9 @@ func (s3backer *s3backerMounter) mountInit(path string) error {
 		// baseURL must end with /
 		fmt.Sprintf("--baseURL=%s/", s3backer.url),
 		fmt.Sprintf("--blockSize=%v", s3backerBlockSize),
-		fmt.Sprintf("--size=%v", s3backer.size),
+		fmt.Sprintf("--size=%v", s3backer.bucket.CapacityBytes),
 		"--listBlocks",
-		s3backer.bucket,
+		s3backer.bucket.Name,
 		path,
 	}
 	if s3backer.region != "" {

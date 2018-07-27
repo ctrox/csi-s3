@@ -16,21 +16,21 @@ const (
 
 // Implements Mounter
 type goofysMounter struct {
-	bucket          string
+	bucket          *bucket
 	endpoint        string
 	region          string
 	accessKeyID     string
 	secretAccessKey string
 }
 
-func newGoofysMounter(bucket string, cfg *Config) (Mounter, error) {
+func newGoofysMounter(b *bucket, cfg *Config) (Mounter, error) {
 	region := cfg.Region
 	// if endpoint is set we need a default region
 	if region == "" && cfg.Endpoint != "" {
 		region = defaultRegion
 	}
 	return &goofysMounter{
-		bucket:          bucket,
+		bucket:          b,
 		endpoint:        cfg.Endpoint,
 		region:          region,
 		accessKeyID:     cfg.AccessKeyID,
@@ -61,7 +61,7 @@ func (goofys *goofysMounter) Mount(source string, target string) error {
 	os.Setenv("AWS_ACCESS_KEY_ID", goofys.accessKeyID)
 	os.Setenv("AWS_SECRET_ACCESS_KEY", goofys.secretAccessKey)
 
-	_, _, err := goofysApi.Mount(context.Background(), goofys.bucket, goofysCfg)
+	_, _, err := goofysApi.Mount(context.Background(), goofys.bucket.Name, goofysCfg)
 
 	if err != nil {
 		return fmt.Errorf("Error mounting via goofys: %s", err)
