@@ -56,5 +56,8 @@ RUN pip install ${S3QL_URL} && rm -rf /root/.cache
 
 COPY --from=s3backer /usr/bin/s3backer /usr/bin/s3backer
 
+# ensure we have a loop device for s3backer
+RUN mknod /dev/loop0 b 7 0
+
 COPY ./_output/s3driver /s3driver
 ENTRYPOINT ["/s3driver"]

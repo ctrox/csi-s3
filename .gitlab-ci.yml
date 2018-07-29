@@ -1,0 +1,37 @@
+image: golang:1.10
+
+variables:
+  DOCKER_HOST: tcp://localhost:2375
+  DOCKER_DRIVER: overlay2
+  GO_PROJECT_BASE: /go/src/github.com/ctrox
+  GO_PROJECT_DIR: $GO_PROJECT_BASE/csi-s3
+  MINIO_ACCESS_KEY: FJDSJ
+  MINIO_SECRET_KEY: DSG643HGDS
+  DEPCACHEDIR: $CI_PROJECT_DIR/.dep
+
+stages:
+  - build
+  - test
+
+cache:
+  paths:
+    - .dep
+
+build:
+  stage: build
+  before_script:
+  - mkdir -p $GO_PROJECT_BASE
+  - ln -s $CI_PROJECT_DIR $GO_PROJECT_BASE
+  - wget https://raw.githubusercontent.com/golang/dep/master/install.sh
+  - sh ./install.sh
+  - cd $GO_PROJECT_DIR
+  script:
+    - make build
+
+test:
+  stage: test
+  image: docker:stable
+  services:
+    - docker:dind
+  script:
+    - docker run --rm --privileged -v $(pwd):$GO_PROJECT_DIR --device /dev/fuse ctrox/$CI_PROJECT_NAME:test

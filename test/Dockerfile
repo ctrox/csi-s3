@@ -15,6 +15,13 @@ ENV GOROOT /usr/local/go
 ENV GOPATH /go
 ENV PATH=$GOPATH/bin:$GOROOT/bin:$PATH
 
+# install dep
+RUN wget -q https://raw.githubusercontent.com/golang/dep/master/install.sh && \
+    mkdir -p /go/bin && \
+    sh ./install.sh
+
 RUN go get -u github.com/minio/minio && go install github.com/minio/minio/cmd
 
-ENTRYPOINT ["/go/src/github.com/ctrox/csi-s3/test/test.sh"]
+ADD test/test.sh /usr/local/bin
+
+ENTRYPOINT ["/usr/local/bin/test.sh"]
