@@ -1,7 +1,7 @@
 image: golang:1.10
 
 variables:
-  DOCKER_HOST: tcp://localhost:2375
+  DOCKER_HOST: tcp://docker:2375
   DOCKER_DRIVER: overlay2
   GO_PROJECT_BASE: /go/src/github.com/ctrox
   GO_PROJECT_DIR: $GO_PROJECT_BASE/csi-s3
