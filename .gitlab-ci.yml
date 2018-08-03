@@ -7,15 +7,10 @@ variables:
   GO_PROJECT_DIR: $GO_PROJECT_BASE/csi-s3
   MINIO_ACCESS_KEY: FJDSJ
   MINIO_SECRET_KEY: DSG643HGDS
-  DEPCACHEDIR: $CI_PROJECT_DIR/.dep
 
 stages:
   - build
   - test
-
-cache:
-  paths:
-    - .dep
 
 build:
   stage: build

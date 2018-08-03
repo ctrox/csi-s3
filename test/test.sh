@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 export MINIO_ACCESS_KEY=FJDSJ
 export MINIO_SECRET_KEY=DSG643HGDS
-export DEPCACHEDIR=$GOPATH/src/github.com/ctrox/csi-s3/.dep
 
 mkdir -p /tmp/minio
 minio server --quiet /tmp/minio &>/dev/null &
