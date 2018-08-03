@@ -4,11 +4,12 @@ LABEL description="csi-s3 testing image"
 
 RUN apt-get update && \
     apt-get install -y \
-      git wget && \
+      git wget make && \
     rm -rf /var/lib/apt/lists/*
 
 RUN wget -q https://dl.google.com/go/go1.10.3.linux-amd64.tar.gz && \
     tar -xf go1.10.3.linux-amd64.tar.gz && \
+    rm go1.10.3.linux-amd64.tar.gz && \
     mv go /usr/local
 
 ENV GOROOT /usr/local/go
