@@ -27,7 +27,8 @@ const (
 	// blockSize to use in k
 	s3backerBlockSize   = "128k"
 	s3backerDefaultSize = 1024 * 1024 * 1024 // 1GiB
-	S3backerLoopDevice  = "/dev/loop0"
+	// S3backerLoopDevice the loop device required by s3backer
+	S3backerLoopDevice = "/dev/loop0"
 )
 
 func newS3backerMounter(bucket *bucket, cfg *Config) (Mounter, error) {
