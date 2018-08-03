@@ -1,4 +1,6 @@
-image: ctrox/csi-s3:test
+image:
+  name: ctrox/csi-s3:test
+  entrypoint: [""]
 
 variables:
   DOCKER_HOST: tcp://docker:2375
