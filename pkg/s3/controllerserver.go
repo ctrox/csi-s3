@@ -149,6 +149,7 @@ func (cs *controllerServer) ValidateVolumeCapabilities(ctx context.Context, req 
 		return nil, status.Error(codes.NotFound, fmt.Sprintf("Volume with id %s does not exist", req.GetVolumeId()))
 	}
 
+	// TODO: checkout if this code is still needed?
 	//for _, cap := range req.VolumeCapabilities {
 	//	if cap.GetAccessMode().GetMode() != csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER {
 	//		return &csi.ValidateVolumeCapabilitiesResponse{Confirmed: false, Message: ""}, nil
