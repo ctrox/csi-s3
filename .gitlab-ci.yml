@@ -21,4 +21,4 @@ test:
   services:
     - docker:dind
   script:
-    - docker run --rm --privileged -v $(pwd):$GO_PROJECT_DIR --device /dev/fuse ctrox/$CI_PROJECT_NAME:test
+    - docker run --rm --privileged -v $(pwd):/app --device /dev/fuse ctrox/csi-s3:test
