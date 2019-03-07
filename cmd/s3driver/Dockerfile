@@ -57,7 +57,7 @@ RUN pip install ${S3QL_URL} && rm -rf /root/.cache
 COPY --from=s3backer /usr/bin/s3backer /usr/bin/s3backer
 
 # install rclone
-ARG RCLONE_VERSION=v1.45
+ARG RCLONE_VERSION=v1.46
 RUN cd /tmp \
     && wget -q https://downloads.rclone.org/${RCLONE_VERSION}/rclone-${RCLONE_VERSION}-linux-amd64.zip \
     && unzip /tmp/rclone-${RCLONE_VERSION}-linux-amd64.zip \
