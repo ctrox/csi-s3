@@ -81,7 +81,7 @@ func (s3backer *s3backerMounter) Unstage(stageTarget string) error {
 	return fuseUnmount(stageTarget)
 }
 
-func (s3backer *s3backerMounter) Mount(source string, target string) error {
+func (s3backer *s3backerMounter) Mount(source string, target string, attrib map[string]string) error {
 	device := path.Join(source, s3backerDevice)
 	// second mount will mount the 'file' as a filesystem
 	err := mount.New("").Mount(device, target, s3backerFsType, []string{})

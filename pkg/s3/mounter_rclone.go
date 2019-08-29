@@ -36,7 +36,7 @@ func (rclone *rcloneMounter) Unstage(stageTarget string) error {
 	return nil
 }
 
-func (rclone *rcloneMounter) Mount(source string, target string) error {
+func (rclone *rcloneMounter) Mount(source string, target string, attrib map[string]string) error {
 	args := []string{
 		"mount",
 		fmt.Sprintf(":s3:%s/%s", rclone.bucket.Name, rclone.bucket.FSPath),

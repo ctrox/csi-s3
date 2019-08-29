@@ -8,6 +8,14 @@ parameters:
   # specify which mounter to use
   # can be set to rclone, s3fs, goofys or s3backer
   mounter: rclone
+
+  # goofys allows the following additional optional parameters to be passed
+  
+  # The uid to mount the volume as.
+  # goofysuid: "1000"
+  # The gid to mount the volume as.
+  # goofysgid: "1000"
+
   csi.storage.k8s.io/provisioner-secret-name: csi-s3-secret
   csi.storage.k8s.io/provisioner-secret-namespace: kube-system
   csi.storage.k8s.io/controller-publish-secret-name: csi-s3-secret
