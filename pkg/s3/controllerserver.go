@@ -72,6 +72,12 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		if err != nil {
 			return nil, fmt.Errorf("failed to get bucket metadata of bucket %s: %v", volumeID, err)
 		}
+
+		if b.FSPath != fsPrefix {
+			return nil, fmt.Errorf("%s/%s is not found, bucket %s is not created by provisioner",
+				volumeID, metadataName, volumeID)
+		}
+
 		// Check if volume capacity requested is bigger than the already existing capacity
 		if capacityBytes > b.CapacityBytes {
 			return nil, status.Error(codes.AlreadyExists, fmt.Sprintf("Volume with the same name: %s but with smaller size already exist", volumeID))

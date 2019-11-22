@@ -76,10 +76,28 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	glog.V(4).Infof("target %v\ndevice %v\nreadonly %v\nvolumeId %v\nattributes %v\nmountflags %v\n",
 		targetPath, deviceID, readOnly, volumeID, attrib, mountFlags)
 
-	s3, err := newS3ClientFromSecrets(req.GetSecrets())
+	var s3 *s3Client
+	// if S3 key is stored in volume attribute, use these keys to access S3
+	// Otherwise, use S3 key stored in secret
+	if checkS3AttributeExist(attrib) {
+		s3, err = newS3ClientFromAttribute(attrib)
+	} else {
+		s3, err = newS3ClientFromSecrets(req.GetSecrets())
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize S3 client: %s", err)
 	}
+
+	exists, err := s3.bucketExists(volumeID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check if bucket %s exists: %v", volumeID, err)
+	}
+
+	if !exists {
+		return nil, fmt.Errorf("bucket %s not exist", volumeID)
+	}
+
 	b, err := s3.getBucket(volumeID)
 	if err != nil {
 		return nil, err
@@ -142,10 +160,31 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	if !notMnt {
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
-	s3, err := newS3ClientFromSecrets(req.GetSecrets())
+
+	// if S3 key is stored in volume attribute, use these keys to access S3
+	// Otherwise, use S3 key stored in secret
+	var s3 *s3Client
+	attrib := req.GetVolumeContext()
+	if checkS3AttributeExist(attrib) {
+		s3, err = newS3ClientFromAttribute(attrib)
+	} else {
+		s3, err = newS3ClientFromSecrets(req.GetSecrets())
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize S3 client: %s", err)
 	}
+
+	exists, err := s3.bucketExists(volumeID)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to check if bucket %s exists: %v", volumeID, err)
+	}
+
+	if !exists {
+		return nil, fmt.Errorf("bucket %s not exist", volumeID)
+	}
+
 	b, err := s3.getBucket(volumeID)
 	if err != nil {
 		return nil, err
@@ -211,4 +250,25 @@ func checkMount(targetPath string) (bool, error) {
 		}
 	}
 	return notMnt, nil
+}
+
+func checkS3AttributeExist(attr map[string]string) bool {
+
+	if _, exist := attr["accessKeyID"]; !exist {
+		return false
+	}
+
+	if _, exist := attr["secretAccessKey"]; !exist {
+		return false
+	}
+
+	if _, exist := attr["endpoint"]; !exist {
+		return false
+	}
+
+	if _, exist := attr["region"]; !exist {
+		return false
+	}
+
+	return true
 }

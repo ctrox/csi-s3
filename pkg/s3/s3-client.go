@@ -49,12 +49,20 @@ func newS3Client(cfg *Config) (*s3Client, error) {
 	return client, nil
 }
 
+func newS3ClientFromAttribute(attributes map[string]string) (*s3Client, error) {
+	return newS3ClientFromMap(attributes)
+}
+
 func newS3ClientFromSecrets(secrets map[string]string) (*s3Client, error) {
+	return newS3ClientFromMap(secrets)
+}
+
+func newS3ClientFromMap(confMap map[string]string) (*s3Client, error) {
 	return newS3Client(&Config{
-		AccessKeyID:     secrets["accessKeyID"],
-		SecretAccessKey: secrets["secretAccessKey"],
-		Region:          secrets["region"],
-		Endpoint:        secrets["endpoint"],
+		AccessKeyID:     confMap["accessKeyID"],
+		SecretAccessKey: confMap["secretAccessKey"],
+		Region:          confMap["region"],
+		Endpoint:        confMap["endpoint"],
 		// Mounter is set in the volume preferences, not secrets
 		Mounter: "",
 	})
@@ -135,19 +143,35 @@ func (client *s3Client) getBucket(bucketName string) (*bucket, error) {
 	opts := minio.GetObjectOptions{}
 	obj, err := client.minio.GetObject(bucketName, metadataName, opts)
 	if err != nil {
-		return &bucket{}, err
+		return nil, err
 	}
+
+	// if .metadata.json is not exist inside bucket, create a default bucket
+	// todo: check if there is any side effect for controller server
 	objInfo, err := obj.Stat()
 	if err != nil {
-		return &bucket{}, err
+		if err.Error() == "The specified key does not exist." {
+			return &bucket{
+				Name:          bucketName,
+				Mounter:       rcloneMounterType,
+				FSPath:        "",
+				CapacityBytes: 0,
+			}, nil
+		}
+
+		return nil, err
 	}
 	b := make([]byte, objInfo.Size)
 	_, err = obj.Read(b)
 
 	if err != nil && err != io.EOF {
-		return &bucket{}, err
+		return nil, err
 	}
 	var meta bucket
 	err = json.Unmarshal(b, &meta)
-	return &meta, err
+	if err != nil {
+		return nil, err
+	}
+
+	return &meta, nil
 }

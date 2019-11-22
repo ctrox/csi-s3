@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: new-pv
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 5Gi
+  csi:
+    driver: ch.ctrox.csi.s3-driver
+    volumeAttributes:
+      accessKeyID: <YOUR_ACCESS_KEY_ID>
+      secretAccessKey: <YOUR_SECRET_ACCES_KEY>
+      # For AWS set it to "https://s3.<region>.amazonaws.com"
+      endpoint: https://s3.eu-central-1.amazonaws.com
+      # If not on S3, set it to ""
+      region: <S3_REGION>
+    # Name of bucket which already created
+    volumeHandle: bucketnameins3
