@@ -3,6 +3,7 @@ package s3
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -49,11 +50,24 @@ func newS3Client(cfg *Config) (*s3Client, error) {
 	return client, nil
 }
 
-func newS3ClientFromAttribute(attributes map[string]string) (*s3Client, error) {
-	return newS3ClientFromMap(attributes)
-}
-
 func newS3ClientFromSecrets(secrets map[string]string) (*s3Client, error) {
+
+	if _, exist := secrets["accessKeyID"]; !exist {
+		return nil, errors.New("accessKeyID is not found in Secret")
+	}
+
+	if _, exist := secrets["secretAccessKey"]; !exist {
+		return nil, errors.New("secretAccessKey is not found in Secret")
+	}
+
+	if _, exist := secrets["region"]; !exist {
+		return nil, errors.New("region is not found in Secret")
+	}
+
+	if _, exist := secrets["endpoint"]; !exist {
+		return nil, errors.New("endpoint is not found in Secret")
+	}
+
 	return newS3ClientFromMap(secrets)
 }
 

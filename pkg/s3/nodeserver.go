@@ -80,8 +80,8 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		targetPath, deviceID, readOnly, volumeID, attrib, mountFlags)
 
 	var s3 *s3Client
-	// if S3 key is stored in volume attribute, use these keys to access S3
-	// Otherwise, use S3 key stored in secret
+	// if volume attribute contain secret name & namespace, retrieve S3 credentials from this secret.
+	// Otherwise, use S3 credentials stored in secret from request.
 	if checkS3SecretExist(attrib) {
 		s3, err = newS3ClientFromSecrets(ns.getExistS3BucketCredentials(attrib["secretNamespace"], attrib["secretName"]))
 	} else {
@@ -164,8 +164,8 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
 
-	// if S3 key is stored in volume attribute, use these keys to access S3
-	// Otherwise, use S3 key stored in secret
+	// if volume attribute contain secret name & namespace, retrieve S3 credentials from this secret.
+	// Otherwise, use S3 credentials stored in secret from request.
 	var s3 *s3Client
 	attrib := req.GetVolumeContext()
 	if checkS3SecretExist(attrib) {
