@@ -100,7 +100,27 @@ kubectl create -f csi-s3.yaml
 
 #### 2. Test the S3 driver for static provision
 
-* Create a bucket in your S3 first. Then create a Persistent Volume represent the S3 bucket.
+* Create a bucket in your S3 first. 
+
+
+* Create a secret hold your S3 credentials
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  namespace: default
+  name: user-s3-secret
+stringData:
+  accessKeyID: <YOUR_ACCESS_KEY_ID>
+  secretAccessKey: <YOUR_SECRET_ACCES_KEY>
+  # For AWS set it to "https://s3.<region>.amazonaws.com"
+  endpoint: https://s3.eu-central-1.amazonaws.com
+  # If not on S3, set it to ""
+  region: <S3_REGION>
+```
+
+* Create a Persistent Volume represent the existing S3 bucket and specify secret namespace and name.
 
 ```yaml
 apiVersion: v1
@@ -115,13 +135,8 @@ spec:
   csi:
     driver: ch.ctrox.csi.s3-driver
     volumeAttributes:
-      accessKeyID: <YOUR_ACCESS_KEY_ID>
-      secretAccessKey: <YOUR_SECRET_ACCES_KEY>
-      # For AWS set it to "https://s3.<region>.amazonaws.com"
-      endpoint: https://s3.eu-central-1.amazonaws.com
-      # If not on S3, set it to ""
-      region: <S3_REGION>
-    # Name of bucket which already created
+      secretNamespace: <SECRET_NAMESPACE_HOLD_YOUR_S3_KEY>
+      secretName: <SECRET_NAME_HOLD_YOUR_S3_KEY>
     volumeHandle: <S3_BUCKET_NAME>
 ```
 
