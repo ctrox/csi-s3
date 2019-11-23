@@ -18,14 +18,16 @@ package s3
 
 import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/ctrox/csi-s3/pkg/k8sutil"
 	"github.com/golang/glog"
 
 	csicommon "github.com/kubernetes-csi/drivers/pkg/csi-common"
 )
 
 type s3 struct {
-	driver   *csicommon.CSIDriver
-	endpoint string
+	driver     *csicommon.CSIDriver
+	endpoint   string
+	kubeconfig string
 
 	ids *identityServer
 	ns  *nodeServer
@@ -45,15 +47,16 @@ var (
 )
 
 // NewS3 initializes the driver
-func NewS3(nodeID string, endpoint string) (*s3, error) {
+func NewS3(nodeID string, endpoint string, kubeconfig string) (*s3, error) {
 	driver := csicommon.NewCSIDriver(driverName, vendorVersion, nodeID)
 	if driver == nil {
 		glog.Fatalln("Failed to initialize CSI Driver.")
 	}
 
 	s3Driver := &s3{
-		endpoint: endpoint,
-		driver:   driver,
+		endpoint:   endpoint,
+		driver:     driver,
+		kubeconfig: kubeconfig,
 	}
 	return s3Driver, nil
 }
@@ -70,9 +73,12 @@ func (s3 *s3) newControllerServer(d *csicommon.CSIDriver) *controllerServer {
 	}
 }
 
-func (s3 *s3) newNodeServer(d *csicommon.CSIDriver) *nodeServer {
+func (s3 *s3) newNodeServer(d *csicommon.CSIDriver, kubeconfig string) *nodeServer {
+	kclient := k8sutil.GetK8SClientSet(kubeconfig)
+
 	return &nodeServer{
 		DefaultNodeServer: csicommon.NewDefaultNodeServer(d),
+		kclient:           kclient,
 	}
 }
 
@@ -86,7 +92,7 @@ func (s3 *s3) Run() {
 
 	// Create GRPC servers
 	s3.ids = s3.newIdentityServer(s3.driver)
-	s3.ns = s3.newNodeServer(s3.driver)
+	s3.ns = s3.newNodeServer(s3.driver, s3.kubeconfig)
 	s3.cs = s3.newControllerServer(s3.driver)
 
 	s := csicommon.NewNonBlockingGRPCServer()

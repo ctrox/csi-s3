@@ -10,11 +10,7 @@ spec:
   csi:
     driver: ch.ctrox.csi.s3-driver
     volumeAttributes:
-      accessKeyID: <YOUR_ACCESS_KEY_ID>
-      secretAccessKey: <YOUR_SECRET_ACCES_KEY>
-      # For AWS set it to "https://s3.<region>.amazonaws.com"
-      endpoint: https://s3.eu-central-1.amazonaws.com
-      # If not on S3, set it to ""
-      region: <S3_REGION>
+      secretNamespace: <USER_SECRET_NAMESPACE>
+      secretName: <USER_SECRET_NAME>
     # Name of bucket which already created
-    volumeHandle: bucketnameins3
+    volumeHandle: <EXISTING_S3_BUCKET>

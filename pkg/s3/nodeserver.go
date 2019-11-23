@@ -18,6 +18,8 @@ package s3
 
 import (
 	"fmt"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"os"
 
 	"github.com/golang/glog"
@@ -33,6 +35,7 @@ import (
 
 type nodeServer struct {
 	*csicommon.DefaultNodeServer
+	kclient *kubernetes.Clientset
 }
 
 func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
@@ -79,8 +82,8 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	var s3 *s3Client
 	// if S3 key is stored in volume attribute, use these keys to access S3
 	// Otherwise, use S3 key stored in secret
-	if checkS3AttributeExist(attrib) {
-		s3, err = newS3ClientFromAttribute(attrib)
+	if checkS3SecretExist(attrib) {
+		s3, err = newS3ClientFromSecrets(ns.getExistS3BucketCredentials(attrib["secretNamespace"], attrib["secretName"]))
 	} else {
 		s3, err = newS3ClientFromSecrets(req.GetSecrets())
 	}
@@ -165,8 +168,8 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	// Otherwise, use S3 key stored in secret
 	var s3 *s3Client
 	attrib := req.GetVolumeContext()
-	if checkS3AttributeExist(attrib) {
-		s3, err = newS3ClientFromAttribute(attrib)
+	if checkS3SecretExist(attrib) {
+		s3, err = newS3ClientFromSecrets(ns.getExistS3BucketCredentials(attrib["secretNamespace"], attrib["secretName"]))
 	} else {
 		s3, err = newS3ClientFromSecrets(req.GetSecrets())
 	}
@@ -237,6 +240,23 @@ func (ns *nodeServer) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandV
 	return &csi.NodeExpandVolumeResponse{}, status.Error(codes.Unimplemented, "NodeExpandVolume is not implemented")
 }
 
+func (ns *nodeServer) getExistS3BucketCredentials(namespace, name string) map[string]string {
+
+	result := make(map[string]string)
+	secret, err := ns.kclient.CoreV1().Secrets(namespace).Get(name, v1.GetOptions{})
+
+	if err != nil {
+		glog.V(4).Infof("%s", err.Error())
+		return result
+	}
+
+	for k, v := range secret.Data {
+		result[k] = string(v)
+	}
+
+	return result
+}
+
 func checkMount(targetPath string) (bool, error) {
 	notMnt, err := mount.New("").IsLikelyNotMountPoint(targetPath)
 	if err != nil {
@@ -252,21 +272,13 @@ func checkMount(targetPath string) (bool, error) {
 	return notMnt, nil
 }
 
-func checkS3AttributeExist(attr map[string]string) bool {
+func checkS3SecretExist(attr map[string]string) bool {
 
-	if _, exist := attr["accessKeyID"]; !exist {
+	if _, exist := attr["secretNamespace"]; !exist {
 		return false
 	}
 
-	if _, exist := attr["secretAccessKey"]; !exist {
-		return false
-	}
-
-	if _, exist := attr["endpoint"]; !exist {
-		return false
-	}
-
-	if _, exist := attr["region"]; !exist {
+	if _, exist := attr["secretName"]; !exist {
 		return false
 	}
 
