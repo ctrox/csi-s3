@@ -39,6 +39,8 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	volumeID := req.GetVolumeId()
 	targetPath := req.GetTargetPath()
 	stagingTargetPath := req.GetStagingTargetPath()
+	bucket := req.GetVolumeContext()[volumeAtributeBucket]
+	prefix := req.GetVolumeContext()[volumeAtributePrefix]
 
 	// Check arguments
 	if req.GetVolumeCapability() == nil {
@@ -52,6 +54,9 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	}
 	if len(targetPath) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Target path missing in request")
+	}
+	if bucket == "" {
+		return nil, status.Error(codes.InvalidArgument, "Bucket is missing in request")
 	}
 
 	notMnt, err := checkMount(targetPath)
@@ -80,20 +85,20 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize S3 client: %s", err)
 	}
-	b, err := s3.getBucket(volumeID)
+	mounter, err := s3.mounter(req.GetVolumeContext()[paramMounter])
 	if err != nil {
 		return nil, err
 	}
-
-	mounter, err := newMounter(b, s3.cfg)
-	if err != nil {
+	volume := &volume{
+		id:     volumeID,
+		bucket: bucket,
+		prefix: prefix,
+	}
+	if err := mounter.Mount(volume, stagingTargetPath, targetPath); err != nil {
 		return nil, err
 	}
-	if err := mounter.Mount(stagingTargetPath, targetPath); err != nil {
-		return nil, err
-	}
 
-	glog.V(4).Infof("s3: bucket %s successfuly mounted to %s", b.Name, targetPath)
+	glog.V(4).Infof("s3: bucket %s/%s successfuly mounted to %s", bucket, prefix, targetPath)
 
 	return &csi.NodePublishVolumeResponse{}, nil
 }
@@ -121,12 +126,16 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
 	volumeID := req.GetVolumeId()
 	stagingTargetPath := req.GetStagingTargetPath()
+	bucket := req.GetVolumeContext()[volumeAtributeBucket]
+	prefix := req.GetVolumeContext()[volumeAtributePrefix]
 
 	// Check arguments
 	if len(volumeID) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID missing in request")
 	}
-
+	if bucket == "" {
+		return nil, status.Error(codes.InvalidArgument, "Bucket name is missing")
+	}
 	if len(stagingTargetPath) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Target path missing in request")
 	}
@@ -146,15 +155,16 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize S3 client: %s", err)
 	}
-	b, err := s3.getBucket(volumeID)
+	mounter, err := s3.mounter(req.GetPublishContext()[paramMounter])
 	if err != nil {
 		return nil, err
 	}
-	mounter, err := newMounter(b, s3.cfg)
-	if err != nil {
-		return nil, err
+	volume := &volume{
+		id:     volumeID,
+		bucket: bucket,
+		prefix: prefix,
 	}
-	if err := mounter.Stage(stagingTargetPath); err != nil {
+	if err := mounter.Stage(volume, stagingTargetPath); err != nil {
 		return nil, err
 	}
 

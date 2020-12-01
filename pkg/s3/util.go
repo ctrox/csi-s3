@@ -16,6 +16,17 @@ import (
 	"github.com/golang/glog"
 )
 
+const (
+	volumeAtributeBucket = "bucket"
+	volumeAtributePrefix = "prefix"
+	paramMounter         = "mounter"
+
+	// storageClassParamCommonBucket = "commonBucket"
+	// storageClassParamCommonPrefix = "commonPrefix"
+
+	bucketNamePrefix = "csi-"
+)
+
 func waitForProcess(p *os.Process, backoff int) error {
 	if backoff == 20 {
 		return fmt.Errorf("Timeout waiting for PID %v to end", p.Pid)

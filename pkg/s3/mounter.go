@@ -12,9 +12,9 @@ import (
 // Mounter interface which can be implemented
 // by the different mounter types
 type Mounter interface {
-	Stage(stagePath string) error
-	Unstage(stagePath string) error
-	Mount(source string, target string) error
+	Stage(vol *volume, stagePath string) error
+	Unstage(vol *volume, stagePath string) error
+	Mount(vol *volume, source string, target string) error
 }
 
 const (
@@ -26,28 +26,27 @@ const (
 )
 
 // newMounter returns a new mounter depending on the mounterType parameter
-func newMounter(bucket *bucket, cfg *Config) (Mounter, error) {
-	mounter := bucket.Mounter
+func newMounter(cfg *Config, mounter string) (Mounter, error) {
 	// Fall back to mounterType in cfg
-	if len(bucket.Mounter) == 0 {
+	if len(mounter) == 0 {
 		mounter = cfg.Mounter
 	}
 	switch mounter {
 	case s3fsMounterType:
-		return newS3fsMounter(bucket, cfg)
+		return newS3fsMounter(cfg)
 
 	case goofysMounterType:
-		return newGoofysMounter(bucket, cfg)
+		return newGoofysMounter(cfg)
 
 	case s3backerMounterType:
-		return newS3backerMounter(bucket, cfg)
+		return newS3backerMounter(cfg)
 
 	case rcloneMounterType:
-		return newRcloneMounter(bucket, cfg)
+		return newRcloneMounter(cfg)
 
 	default:
 		// default to s3backer
-		return newS3backerMounter(bucket, cfg)
+		return newS3backerMounter(cfg)
 	}
 }
 

@@ -2,18 +2,12 @@ package s3
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/url"
+	"path/filepath"
 
 	"github.com/golang/glog"
 	"github.com/minio/minio-go"
-)
-
-const (
-	metadataName = ".metadata.json"
-	fsPrefix     = "csi-fs"
 )
 
 type s3Client struct {
@@ -21,11 +15,10 @@ type s3Client struct {
 	minio *minio.Client
 }
 
-type bucket struct {
-	Name          string
-	Mounter       string
-	FSPath        string
-	CapacityBytes int64
+type volume struct {
+	id     string
+	bucket string
+	prefix string
 }
 
 func newS3Client(cfg *Config) (*s3Client, error) {
@@ -60,30 +53,53 @@ func newS3ClientFromSecrets(secrets map[string]string) (*s3Client, error) {
 	})
 }
 
-func (client *s3Client) bucketExists(bucketName string) (bool, error) {
-	return client.minio.BucketExists(bucketName)
+func (client *s3Client) mounter(mounter string) (Mounter, error) {
+	return newMounter(client.cfg, mounter)
 }
 
-func (client *s3Client) createBucket(bucketName string) error {
-	return client.minio.MakeBucket(bucketName, client.cfg.Region)
+func (client *s3Client) volumeExists(vol *volume) (bool, error) {
+	client.completeVolume(vol)
+
+	if exists, err := client.minio.BucketExists(vol.bucket); err != nil || !exists {
+		return exists, err
+	}
+	if vol.prefix != "" {
+		_, err := client.minio.GetObject(vol.bucket, vol.prefix+"/", minio.GetObjectOptions{})
+		if err != nil {
+			return false, err
+		}
+	}
+
+	return true, nil
+
 }
 
-func (client *s3Client) createPrefix(bucketName string, prefix string) error {
-	_, err := client.minio.PutObject(bucketName, prefix+"/", bytes.NewReader([]byte("")), 0, minio.PutObjectOptions{})
+func (client *s3Client) createVolume(vol *volume) error {
+	client.completeVolume(vol)
+
+	exists, err := client.minio.BucketExists(vol.bucket)
 	if err != nil {
 		return err
 	}
+	if !exists {
+		if err := client.minio.MakeBucket(vol.bucket, client.cfg.Region); err != nil {
+			return err
+		}
+	}
+
+	if vol.prefix != "" {
+		_, err := client.minio.PutObject(vol.bucket, vol.prefix+"/", bytes.NewReader([]byte{}), 0, minio.PutObjectOptions{})
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
-func (client *s3Client) removeBucket(bucketName string) error {
-	if err := client.emptyBucket(bucketName); err != nil {
-		return err
-	}
-	return client.minio.RemoveBucket(bucketName)
-}
+func (client *s3Client) removeVolume(vol *volume) error {
+	client.completeVolume(vol)
 
-func (client *s3Client) emptyBucket(bucketName string) error {
 	objectsCh := make(chan string)
 	var listErr error
 
@@ -94,7 +110,7 @@ func (client *s3Client) emptyBucket(bucketName string) error {
 
 		defer close(doneCh)
 
-		for object := range client.minio.ListObjects(bucketName, "", true, doneCh) {
+		for object := range client.minio.ListObjects(vol.bucket, vol.prefix, true, doneCh) {
 			if object.Err != nil {
 				listErr = object.Err
 				return
@@ -110,44 +126,32 @@ func (client *s3Client) emptyBucket(bucketName string) error {
 
 	select {
 	default:
-		errorCh := client.minio.RemoveObjects(bucketName, objectsCh)
+		errorCh := client.minio.RemoveObjects(vol.bucket, objectsCh)
 		for e := range errorCh {
 			glog.Errorf("Failed to remove object %s, error: %s", e.ObjectName, e.Err)
 		}
 		if len(errorCh) != 0 {
-			return fmt.Errorf("Failed to remove all objects of bucket %s", bucketName)
+			return fmt.Errorf("Failed to remove all objects of bucket %s", vol.bucket)
 		}
 	}
 
-	// ensure our prefix is also removed
-	return client.minio.RemoveObject(bucketName, fsPrefix)
+	if vol.prefix != "" {
+		return client.minio.RemoveObject(vol.bucket, vol.prefix)
+	}
+	return client.minio.RemoveBucket(vol.bucket)
 }
 
-func (client *s3Client) setBucket(bucket *bucket) error {
-	b := new(bytes.Buffer)
-	json.NewEncoder(b).Encode(bucket)
-	opts := minio.PutObjectOptions{ContentType: "application/json"}
-	_, err := client.minio.PutObject(bucket.Name, metadataName, b, int64(b.Len()), opts)
-	return err
-}
+func (client *s3Client) completeVolume(vol *volume) {
+	if vol.bucket != "" {
+		return
+	}
 
-func (client *s3Client) getBucket(bucketName string) (*bucket, error) {
-	opts := minio.GetObjectOptions{}
-	obj, err := client.minio.GetObject(bucketName, metadataName, opts)
-	if err != nil {
-		return &bucket{}, err
+	if client.cfg.CommonBucket != "" {
+		vol.bucket = client.cfg.CommonBucket
+		vol.prefix = filepath.Join(client.cfg.CommonPrefix, vol.id)
+		return
 	}
-	objInfo, err := obj.Stat()
-	if err != nil {
-		return &bucket{}, err
-	}
-	b := make([]byte, objInfo.Size)
-	_, err = obj.Read(b)
 
-	if err != nil && err != io.EOF {
-		return &bucket{}, err
-	}
-	var meta bucket
-	err = json.Unmarshal(b, &meta)
-	return &meta, err
+	vol.bucket = bucketNamePrefix + vol.id
+	vol.prefix = client.cfg.CommonPrefix
 }

@@ -13,8 +13,7 @@ import (
 
 // Implements Mounter
 type s3backerMounter struct {
-	bucket          *bucket
-	url             string
+	endpoint        string
 	region          string
 	accessKeyID     string
 	secretAccessKey string
@@ -32,19 +31,14 @@ const (
 	S3backerLoopDevice = "/dev/loop0"
 )
 
-func newS3backerMounter(bucket *bucket, cfg *Config) (Mounter, error) {
+func newS3backerMounter(cfg *Config) (Mounter, error) {
 	url, err := url.Parse(cfg.Endpoint)
 	if err != nil {
 		return nil, err
 	}
-	url.Path = path.Join(url.Path, bucket.Name, bucket.FSPath)
-	// s3backer cannot work with 0 size volumes
-	if bucket.CapacityBytes == 0 {
-		bucket.CapacityBytes = s3backerDefaultSize
-	}
+
 	s3backer := &s3backerMounter{
-		bucket:          bucket,
-		url:             cfg.Endpoint,
+		endpoint:        cfg.Endpoint,
 		region:          cfg.Region,
 		accessKeyID:     cfg.AccessKeyID,
 		secretAccessKey: cfg.SecretAccessKey,
@@ -54,18 +48,14 @@ func newS3backerMounter(bucket *bucket, cfg *Config) (Mounter, error) {
 	return s3backer, s3backer.writePasswd()
 }
 
-func (s3backer *s3backerMounter) String() string {
-	return s3backer.bucket.Name
-}
-
-func (s3backer *s3backerMounter) Stage(stageTarget string) error {
+func (s3backer *s3backerMounter) Stage(vol *volume, stageTarget string) error {
 	// s3backer uses the loop device
 	if err := createLoopDevice(S3backerLoopDevice); err != nil {
 		return err
 	}
 	// s3backer requires two mounts
 	// first mount will fuse mount the bucket to a single 'file'
-	if err := s3backer.mountInit(stageTarget); err != nil {
+	if err := s3backer.mountInit(vol, stageTarget); err != nil {
 		return err
 	}
 	// ensure 'file' device is formatted
@@ -76,12 +66,12 @@ func (s3backer *s3backerMounter) Stage(stageTarget string) error {
 	return err
 }
 
-func (s3backer *s3backerMounter) Unstage(stageTarget string) error {
+func (s3backer *s3backerMounter) Unstage(_ *volume, stageTarget string) error {
 	// Unmount the s3backer fuse mount
 	return fuseUnmount(stageTarget)
 }
 
-func (s3backer *s3backerMounter) Mount(source string, target string) error {
+func (s3backer *s3backerMounter) Mount(vol *volume, source string, target string) error {
 	device := path.Join(source, s3backerDevice)
 	// second mount will mount the 'file' as a filesystem
 	err := mount.New("").Mount(device, target, s3backerFsType, []string{})
@@ -93,27 +83,27 @@ func (s3backer *s3backerMounter) Mount(source string, target string) error {
 	return nil
 }
 
-func (s3backer *s3backerMounter) mountInit(path string) error {
+func (s3backer *s3backerMounter) mountInit(vol *volume, target string) error {
 	args := []string{
 		fmt.Sprintf("--blockSize=%s", s3backerBlockSize),
-		fmt.Sprintf("--size=%v", s3backer.bucket.CapacityBytes),
-		fmt.Sprintf("--prefix=%s/", s3backer.bucket.FSPath),
+		fmt.Sprintf("--size=%v", s3backerDefaultSize),
+		fmt.Sprintf("--prefix=%s/", vol.prefix),
 		"--listBlocks",
-		s3backer.bucket.Name,
-		path,
+		vol.bucket,
+		target,
 	}
 	if s3backer.region != "" {
 		args = append(args, fmt.Sprintf("--region=%s", s3backer.region))
 	} else {
 		// only set baseURL if not on AWS (region is not set)
 		// baseURL must end with /
-		args = append(args, fmt.Sprintf("--baseURL=%s/", s3backer.url))
+		args = append(args, fmt.Sprintf("--baseURL=%s/", path.Join(s3backer.endpoint, vol.bucket, vol.prefix)))
 	}
 	if s3backer.ssl {
 		args = append(args, "--ssl")
 	}
 
-	return fuseMount(path, s3backerCmd, args)
+	return fuseMount(target, s3backerCmd, args)
 }
 
 func (s3backer *s3backerMounter) writePasswd() error {

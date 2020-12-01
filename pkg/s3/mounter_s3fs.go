@@ -7,7 +7,6 @@ import (
 
 // Implements Mounter
 type s3fsMounter struct {
-	bucket        *bucket
 	url           string
 	region        string
 	pwFileContent string
@@ -17,29 +16,28 @@ const (
 	s3fsCmd = "s3fs"
 )
 
-func newS3fsMounter(b *bucket, cfg *Config) (Mounter, error) {
+func newS3fsMounter(cfg *Config) (Mounter, error) {
 	return &s3fsMounter{
-		bucket:        b,
 		url:           cfg.Endpoint,
 		region:        cfg.Region,
 		pwFileContent: cfg.AccessKeyID + ":" + cfg.SecretAccessKey,
 	}, nil
 }
 
-func (s3fs *s3fsMounter) Stage(stageTarget string) error {
+func (s3fs *s3fsMounter) Stage(*volume, string) error {
 	return nil
 }
 
-func (s3fs *s3fsMounter) Unstage(stageTarget string) error {
+func (s3fs *s3fsMounter) Unstage(*volume, string) error {
 	return nil
 }
 
-func (s3fs *s3fsMounter) Mount(source string, target string) error {
+func (s3fs *s3fsMounter) Mount(vol *volume, source string, target string) error {
 	if err := writes3fsPass(s3fs.pwFileContent); err != nil {
 		return err
 	}
 	args := []string{
-		fmt.Sprintf("%s:/%s", s3fs.bucket.Name, s3fs.bucket.FSPath),
+		fmt.Sprintf("%s:/%s", vol.bucket, vol.prefix),
 		fmt.Sprintf("%s", target),
 		"-o", "use_path_request_style",
 		"-o", fmt.Sprintf("url=%s", s3fs.url),

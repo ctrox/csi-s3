@@ -7,7 +7,6 @@ import (
 
 // Implements Mounter
 type rcloneMounter struct {
-	bucket          *bucket
 	url             string
 	region          string
 	accessKeyID     string
@@ -18,9 +17,8 @@ const (
 	rcloneCmd = "rclone"
 )
 
-func newRcloneMounter(b *bucket, cfg *Config) (Mounter, error) {
+func newRcloneMounter(cfg *Config) (Mounter, error) {
 	return &rcloneMounter{
-		bucket:          b,
 		url:             cfg.Endpoint,
 		region:          cfg.Region,
 		accessKeyID:     cfg.AccessKeyID,
@@ -28,18 +26,18 @@ func newRcloneMounter(b *bucket, cfg *Config) (Mounter, error) {
 	}, nil
 }
 
-func (rclone *rcloneMounter) Stage(stageTarget string) error {
+func (rclone *rcloneMounter) Stage(*volume, string) error {
 	return nil
 }
 
-func (rclone *rcloneMounter) Unstage(stageTarget string) error {
+func (rclone *rcloneMounter) Unstage(*volume, string) error {
 	return nil
 }
 
-func (rclone *rcloneMounter) Mount(source string, target string) error {
+func (rclone *rcloneMounter) Mount(vol *volume, source string, target string) error {
 	args := []string{
 		"mount",
-		fmt.Sprintf(":s3:%s/%s", rclone.bucket.Name, rclone.bucket.FSPath),
+		fmt.Sprintf(":s3:%s/%s", vol.bucket, vol.prefix),
 		fmt.Sprintf("%s", target),
 		"--daemon",
 		"--s3-provider=AWS",

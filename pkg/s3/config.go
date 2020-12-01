@@ -7,4 +7,6 @@ type Config struct {
 	Region          string
 	Endpoint        string
 	Mounter         string
+	CommonBucket    string
+	CommonPrefix    string
 }

@@ -1,4 +1,4 @@
-FROM ctrox/csi-s3:dev-full
+FROM ctrox/csi-s3:v1.1.1-full
 LABEL maintainers="Cyrill Troxler <cyrilltroxler@gmail.com>"
 LABEL description="csi-s3 testing image"
 
@@ -7,9 +7,9 @@ RUN apt-get update && \
   git wget make && \
   rm -rf /var/lib/apt/lists/*
 
-RUN wget -q https://dl.google.com/go/go1.12.5.linux-amd64.tar.gz && \
-  tar -xf go1.12.5.linux-amd64.tar.gz && \
-  rm go1.12.5.linux-amd64.tar.gz && \
+RUN wget -q https://dl.google.com/go/go1.15.1.linux-amd64.tar.gz && \
+  tar -xf go1.15.1.linux-amd64.tar.gz && \
+  rm go1.15.1.linux-amd64.tar.gz && \
   mv go /usr/local
 
 ENV GOROOT /usr/local/go
@@ -25,6 +25,7 @@ WORKDIR /app
 # prewarm go mod cache
 COPY go.mod .
 COPY go.sum .
+ARG GOPROXY=https://goproxy.sl.supremind.info,https://goproxy.cn,direct
 RUN go mod download
 
 ADD test/test.sh /usr/local/bin
