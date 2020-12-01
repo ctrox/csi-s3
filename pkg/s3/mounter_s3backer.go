@@ -13,7 +13,7 @@ import (
 
 // Implements Mounter
 type s3backerMounter struct {
-	endpoint        string
+	url             string
 	region          string
 	accessKeyID     string
 	secretAccessKey string
@@ -38,7 +38,7 @@ func newS3backerMounter(cfg *Config) (Mounter, error) {
 	}
 
 	s3backer := &s3backerMounter{
-		endpoint:        cfg.Endpoint,
+		url:             cfg.Endpoint,
 		region:          cfg.Region,
 		accessKeyID:     cfg.AccessKeyID,
 		secretAccessKey: cfg.SecretAccessKey,
@@ -89,7 +89,8 @@ func (s3backer *s3backerMounter) mountInit(vol *volume, target string) error {
 		fmt.Sprintf("--size=%v", s3backerDefaultSize),
 		fmt.Sprintf("--prefix=%s/", vol.prefix),
 		"--listBlocks",
-		vol.bucket,
+		"-f",
+		path.Join(vol.bucket, vol.prefix),
 		target,
 	}
 	if s3backer.region != "" {
@@ -97,7 +98,12 @@ func (s3backer *s3backerMounter) mountInit(vol *volume, target string) error {
 	} else {
 		// only set baseURL if not on AWS (region is not set)
 		// baseURL must end with /
-		args = append(args, fmt.Sprintf("--baseURL=%s/", path.Join(s3backer.endpoint, vol.bucket, vol.prefix)))
+		// url, e := url.Parse(s3backer.url)
+		// if e != nil {
+		// 	return fmt.Errorf("parse endpoint: %w", e)
+		// }
+		// url.Path = path.Join(url.Path, vol.bucket, vol.prefix)
+		args = append(args, fmt.Sprintf("--baseURL=%s/", s3backer.url))
 	}
 	if s3backer.ssl {
 		args = append(args, "--ssl")

@@ -57,8 +57,8 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	volume := &volume{
 		id:     volumeID,
-		bucket: params[volumeAtributeBucket],
-		prefix: params[volumeAtributePrefix],
+		bucket: params[volumeAttributeBucket],
+		prefix: params[volumeAttributePrefix],
 	}
 
 	glog.V(4).Infof("Got a request to create volume  %v", volume)
@@ -68,9 +68,11 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, fmt.Errorf("failed to initialize S3 client: %w", err)
 	}
 	s3.completeVolume(volume)
+	params[volumeAttributeBucket] = volume.bucket
+	params[volumeAttributePrefix] = volume.prefix
 
 	if exists, err := s3.volumeExists(volume); err != nil {
-		return nil, fmt.Errorf("failed to check voluke existence")
+		return nil, fmt.Errorf("failed to check volume existence: %w", err)
 	} else if !exists {
 		if err := s3.createVolume(volume); err != nil {
 			return nil, fmt.Errorf("failed to initialize empty volume:%v: %w", volume, err)
@@ -79,8 +81,6 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	glog.V(4).Infof("create volume %s", volumeID)
 
-	params[volumeAtributeBucket] = volume.bucket
-	params[volumeAtributePrefix] = volume.prefix
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
 			VolumeId:      volumeID,
@@ -108,8 +108,17 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize S3 client: %s", err)
 	}
-	if err := s3.removeVolume(&volume{id: volumeID}); err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to delete volume %s, error: %v", volumeID, err))
+	exists, err := s3.volumeExists(&volume{id: volumeID})
+	if err != nil {
+		return nil, err
+	}
+	if exists {
+		if err := s3.removeVolume(&volume{id: volumeID}); err != nil {
+			glog.V(3).Infof("Failed to remove volume %s: %v", volumeID, err)
+			return nil, status.Error(codes.Internal, fmt.Sprintf("failed to delete volume %s, error: %v", volumeID, err))
+		}
+	} else {
+		glog.V(5).Infof("Bucket %s does not exist, ignoring request", volumeID)
 	}
 
 	return &csi.DeleteVolumeResponse{}, nil

@@ -17,9 +17,9 @@ import (
 )
 
 const (
-	volumeAtributeBucket = "bucket"
-	volumeAtributePrefix = "prefix"
-	paramMounter         = "mounter"
+	volumeAttributeBucket = "bucket"
+	volumeAttributePrefix = "prefix"
+	paramMounter          = "mounter"
 
 	// storageClassParamCommonBucket = "commonBucket"
 	// storageClassParamCommonPrefix = "commonPrefix"

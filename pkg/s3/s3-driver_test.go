@@ -17,6 +17,8 @@ limitations under the License.
 package s3
 
 import (
+	"flag"
+	"os"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
@@ -24,6 +26,9 @@ import (
 )
 
 func TestS3Driver(t *testing.T) {
+	os.Args = append(os.Args, "-v=4")
+	flag.Parse()
+
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "S3Driver")
 }

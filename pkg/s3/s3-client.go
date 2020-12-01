@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/golang/glog"
+	"github.com/google/uuid"
 	"github.com/minio/minio-go"
 )
 
@@ -48,17 +49,19 @@ func newS3ClientFromSecrets(secrets map[string]string) (*s3Client, error) {
 		SecretAccessKey: secrets["secretAccessKey"],
 		Region:          secrets["region"],
 		Endpoint:        secrets["endpoint"],
-		// Mounter is set in the volume preferences, not secrets
-		Mounter: "",
+		Mounter:         secrets["mounter"],
+		CommonBucket:    secrets["commonBucket"],
+		CommonPrefix:    secrets["commonPrefix"],
 	})
 }
 
-func (client *s3Client) mounter(mounter string) (Mounter, error) {
-	return newMounter(client.cfg, mounter)
+func (client *s3Client) mounter() (Mounter, error) {
+	return newMounter(client.cfg, client.cfg.Mounter)
 }
 
 func (client *s3Client) volumeExists(vol *volume) (bool, error) {
 	client.completeVolume(vol)
+	glog.Info("check volume", "volume", vol)
 
 	if exists, err := client.minio.BucketExists(vol.bucket); err != nil || !exists {
 		return exists, err
@@ -71,7 +74,6 @@ func (client *s3Client) volumeExists(vol *volume) (bool, error) {
 	}
 
 	return true, nil
-
 }
 
 func (client *s3Client) createVolume(vol *volume) error {
@@ -146,12 +148,14 @@ func (client *s3Client) completeVolume(vol *volume) {
 		return
 	}
 
+	hash := uuid.NewSHA1(uuid.Nil, []byte(vol.id)).String()
+
 	if client.cfg.CommonBucket != "" {
 		vol.bucket = client.cfg.CommonBucket
-		vol.prefix = filepath.Join(client.cfg.CommonPrefix, vol.id)
+		vol.prefix = filepath.Join(client.cfg.CommonPrefix, hash)
 		return
 	}
 
-	vol.bucket = bucketNamePrefix + vol.id
+	vol.bucket = bucketNamePrefix + hash
 	vol.prefix = client.cfg.CommonPrefix
 }
