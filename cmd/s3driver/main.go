@@ -29,14 +29,15 @@ func init() {
 }
 
 var (
-	endpoint = flag.String("endpoint", "unix://tmp/csi.sock", "CSI endpoint")
-	nodeID   = flag.String("nodeid", "", "node id")
+	endpoint   = flag.String("endpoint", "unix://tmp/csi.sock", "CSI endpoint")
+	nodeID     = flag.String("nodeid", "", "node id")
+	kubeconfig = flag.String("kubeconfig", "", "kubeconfig file path")
 )
 
 func main() {
 	flag.Parse()
 
-	driver, err := s3.NewS3(*nodeID, *endpoint)
+	driver, err := s3.NewS3(*nodeID, *endpoint, *kubeconfig)
 	if err != nil {
 		log.Fatal(err)
 	}

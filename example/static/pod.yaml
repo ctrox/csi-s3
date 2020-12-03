@@ -1,8 +1,8 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: csi-s3-test-nginx
   namespace: default
+  name: csi-s3-test-nginx
 spec:
   containers:
    - name: csi-s3-test-nginx
@@ -13,5 +13,5 @@ spec:
   volumes:
    - name: webroot
      persistentVolumeClaim:
-       claimName: csi-s3-pvc
+       claimName: static-s3-bucket
        readOnly: false

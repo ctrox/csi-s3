@@ -18,6 +18,8 @@ package s3
 
 import (
 	"fmt"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"os"
 
 	"github.com/golang/glog"
@@ -33,6 +35,7 @@ import (
 
 type nodeServer struct {
 	*csicommon.DefaultNodeServer
+	kclient *kubernetes.Clientset
 }
 
 func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
@@ -76,10 +79,28 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	glog.V(4).Infof("target %v\ndevice %v\nreadonly %v\nvolumeId %v\nattributes %v\nmountflags %v\n",
 		targetPath, deviceID, readOnly, volumeID, attrib, mountFlags)
 
-	s3, err := newS3ClientFromSecrets(req.GetSecrets())
+	var s3 *s3Client
+	// if volume attribute contain secret name & namespace, retrieve S3 credentials from this secret.
+	// Otherwise, use S3 credentials stored in secret from request.
+	if checkS3SecretExist(attrib) {
+		s3, err = newS3ClientFromSecrets(ns.getExistS3BucketCredentials(attrib["secretNamespace"], attrib["secretName"]))
+	} else {
+		s3, err = newS3ClientFromSecrets(req.GetSecrets())
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize S3 client: %s", err)
 	}
+
+	exists, err := s3.bucketExists(volumeID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check if bucket %s exists: %v", volumeID, err)
+	}
+
+	if !exists {
+		return nil, fmt.Errorf("bucket %s not exist", volumeID)
+	}
+
 	b, err := s3.getBucket(volumeID)
 	if err != nil {
 		return nil, err
@@ -142,10 +163,31 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	if !notMnt {
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
-	s3, err := newS3ClientFromSecrets(req.GetSecrets())
+
+	// if volume attribute contain secret name & namespace, retrieve S3 credentials from this secret.
+	// Otherwise, use S3 credentials stored in secret from request.
+	var s3 *s3Client
+	attrib := req.GetVolumeContext()
+	if checkS3SecretExist(attrib) {
+		s3, err = newS3ClientFromSecrets(ns.getExistS3BucketCredentials(attrib["secretNamespace"], attrib["secretName"]))
+	} else {
+		s3, err = newS3ClientFromSecrets(req.GetSecrets())
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize S3 client: %s", err)
 	}
+
+	exists, err := s3.bucketExists(volumeID)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to check if bucket %s exists: %v", volumeID, err)
+	}
+
+	if !exists {
+		return nil, fmt.Errorf("bucket %s not exist", volumeID)
+	}
+
 	b, err := s3.getBucket(volumeID)
 	if err != nil {
 		return nil, err
@@ -198,6 +240,23 @@ func (ns *nodeServer) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandV
 	return &csi.NodeExpandVolumeResponse{}, status.Error(codes.Unimplemented, "NodeExpandVolume is not implemented")
 }
 
+func (ns *nodeServer) getExistS3BucketCredentials(namespace, name string) map[string]string {
+
+	result := make(map[string]string)
+	secret, err := ns.kclient.CoreV1().Secrets(namespace).Get(name, v1.GetOptions{})
+
+	if err != nil {
+		glog.V(4).Infof("%s", err.Error())
+		return result
+	}
+
+	for k, v := range secret.Data {
+		result[k] = string(v)
+	}
+
+	return result
+}
+
 func checkMount(targetPath string) (bool, error) {
 	notMnt, err := mount.New("").IsLikelyNotMountPoint(targetPath)
 	if err != nil {
@@ -211,4 +270,17 @@ func checkMount(targetPath string) (bool, error) {
 		}
 	}
 	return notMnt, nil
+}
+
+func checkS3SecretExist(attr map[string]string) bool {
+
+	if _, exist := attr["secretNamespace"]; !exist {
+		return false
+	}
+
+	if _, exist := attr["secretName"]; !exist {
+		return false
+	}
+
+	return true
 }

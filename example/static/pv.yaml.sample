@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: new-pv
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 5Gi
+  csi:
+    driver: ch.ctrox.csi.s3-driver
+    volumeAttributes:
+      secretNamespace: <USER_SECRET_NAMESPACE>
+      secretName: <USER_SECRET_NAME>
+    # Name of bucket which already created
+    volumeHandle: <EXISTING_S3_BUCKET>

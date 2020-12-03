@@ -14,12 +14,15 @@ This is still very experimental and should not be used in any production environ
 * Kubernetes has to allow privileged containers
 * Docker daemon must allow shared mounts (systemd flag `MountFlags=shared`)
 
-### 1. Create a secret with your S3 credentials
+### Dynamic Provision
+
+#### 1. Create a secret with your S3 credentials
 
 ```yaml
 apiVersion: v1
 kind: Secret
 metadata:
+  namespace: kube-system
   name: csi-s3-secret
 stringData:
   accessKeyID: <YOUR_ACCESS_KEY_ID>
@@ -32,10 +35,10 @@ stringData:
 
 The region can be empty if you are using some other S3 compatible storage.
 
-### 2. Deploy the driver
+### 2. Deploy the driver for dynamic provision
 
 ```bash
-cd deploy/kubernetes
+cd deploy/kubernetes/dynamic
 kubectl create -f provisioner.yaml
 kubectl create -f attacher.yaml
 kubectl create -f csi-s3.yaml
@@ -47,7 +50,7 @@ kubectl create -f csi-s3.yaml
 kubectl create -f storageclass.yaml
 ```
 
-### 4. Test the S3 driver
+### 4. Test the S3 driver for dynamic provision
 
 1. Create a pvc using the new storage class:
 
@@ -81,6 +84,79 @@ $ touch /var/lib/www/html/hello_world
 ```
 
 If something does not work as expected, check the troubleshooting section below.
+
+
+### Static Provision
+
+
+#### 1. Deploy the driver for static provision
+
+```bash
+cd deploy/kubernetes/static
+kubectl create -f attacher.yaml
+kubectl create -f csi-s3.yaml
+```
+
+
+#### 2. Test the S3 driver for static provision
+
+* Create a bucket in your S3 first. 
+
+
+* Create a secret hold your S3 credentials
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  namespace: default
+  name: user-s3-secret
+stringData:
+  accessKeyID: <YOUR_ACCESS_KEY_ID>
+  secretAccessKey: <YOUR_SECRET_ACCES_KEY>
+  # For AWS set it to "https://s3.<region>.amazonaws.com"
+  endpoint: https://s3.eu-central-1.amazonaws.com
+  # If not on S3, set it to ""
+  region: <S3_REGION>
+```
+
+* Create a Persistent Volume represent the existing S3 bucket and specify secret namespace and name.
+
+```yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: new-pv
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 5Gi
+  csi:
+    driver: ch.ctrox.csi.s3-driver
+    volumeAttributes:
+      secretNamespace: <SECRET_NAMESPACE_HOLD_YOUR_S3_KEY>
+      secretName: <SECRET_NAME_HOLD_YOUR_S3_KEY>
+    volumeHandle: <S3_BUCKET_NAME>
+```
+
+* Create PVC and check if bound to PV
+
+```bash
+$ cd example/static/
+$ kubectl apply -f pvc.yaml
+$ kubectl apply -f pod.yaml
+```
+
+* Test the mount
+
+```bash
+$ kubectl exec -ti csi-s3-test-nginx bash
+$ mount | grep fuse
+s3fs on /var/lib/www/html type fuse.s3fs (rw,nosuid,nodev,relatime,user_id=0,group_id=0,allow_other)
+$ touch /var/lib/www/html/hello_world
+```
+
 
 ## Additional configuration
 
