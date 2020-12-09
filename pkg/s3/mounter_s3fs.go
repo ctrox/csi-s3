@@ -37,7 +37,7 @@ func (s3fs *s3fsMounter) Mount(vol *volume, source string, target string) error 
 		return err
 	}
 	args := []string{
-		fmt.Sprintf("%s:/%s", vol.bucket, vol.prefix),
+		fmt.Sprintf("%s:/%s", vol.Bucket, vol.Prefix),
 		fmt.Sprintf("%s", target),
 		"-o", "use_path_request_style",
 		"-o", fmt.Sprintf("url=%s", s3fs.url),

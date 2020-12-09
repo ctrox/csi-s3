@@ -87,11 +87,14 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		return nil, err
 	}
 	volume := &volume{
-		id:     volumeID,
-		bucket: bucket,
-		prefix: prefix,
+		ID:     volumeID,
+		Bucket: bucket,
+		Prefix: prefix,
 	}
 	s3.completeVolume(volume)
+	if err := s3.getVolume(volume); err != nil {
+		return nil, err
+	}
 	if err := mounter.Mount(volume, stagingTargetPath, targetPath); err != nil {
 		return nil, err
 	}
@@ -155,12 +158,14 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 		return nil, err
 	}
 	volume := &volume{
-		id:     volumeID,
-		bucket: bucket,
-		prefix: prefix,
+		ID:     volumeID,
+		Bucket: bucket,
+		Prefix: prefix,
 	}
 	s3.completeVolume(volume)
-
+	if err := s3.getVolume(volume); err != nil {
+		return nil, err
+	}
 	if err := mounter.Stage(volume, stagingTargetPath); err != nil {
 		return nil, err
 	}

@@ -37,7 +37,7 @@ func (rclone *rcloneMounter) Unstage(*volume, string) error {
 func (rclone *rcloneMounter) Mount(vol *volume, source string, target string) error {
 	args := []string{
 		"mount",
-		fmt.Sprintf(":s3:%s/%s", vol.bucket, vol.prefix),
+		fmt.Sprintf(":s3:%s/%s", vol.Bucket, vol.Prefix),
 		fmt.Sprintf("%s", target),
 		"--daemon",
 		"--s3-provider=AWS",

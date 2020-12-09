@@ -20,11 +20,7 @@ const (
 	volumeAttributeBucket = "bucket"
 	volumeAttributePrefix = "prefix"
 	paramMounter          = "mounter"
-
-	// storageClassParamCommonBucket = "commonBucket"
-	// storageClassParamCommonPrefix = "commonPrefix"
-
-	bucketNamePrefix = "csi-"
+	bucketNamePrefix      = "csi-"
 )
 
 func waitForProcess(p *os.Process, backoff int) error {

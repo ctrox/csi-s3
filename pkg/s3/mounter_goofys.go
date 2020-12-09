@@ -58,7 +58,7 @@ func (goofys *goofysMounter) Mount(vol *volume, source string, target string) er
 
 	os.Setenv("AWS_ACCESS_KEY_ID", goofys.accessKeyID)
 	os.Setenv("AWS_SECRET_ACCESS_KEY", goofys.secretAccessKey)
-	fullPath := fmt.Sprintf("%s:%s", vol.bucket, vol.prefix)
+	fullPath := fmt.Sprintf("%s:%s", vol.Bucket, vol.Prefix)
 
 	_, _, err := goofysApi.Mount(context.Background(), fullPath, goofysCfg)
 

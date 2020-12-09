@@ -84,13 +84,16 @@ func (s3backer *s3backerMounter) Mount(vol *volume, source string, target string
 }
 
 func (s3backer *s3backerMounter) mountInit(vol *volume, target string) error {
+	cap := vol.Capacity
+	if cap == 0 {
+		cap = s3backerDefaultSize
+	}
 	args := []string{
 		fmt.Sprintf("--blockSize=%s", s3backerBlockSize),
-		fmt.Sprintf("--size=%v", s3backerDefaultSize),
-		fmt.Sprintf("--prefix=%s/", vol.prefix),
+		fmt.Sprintf("--size=%v", cap),
 		"--listBlocks",
 		"-f",
-		path.Join(vol.bucket, vol.prefix),
+		path.Join(vol.Bucket, vol.Prefix),
 		target,
 	}
 	if s3backer.region != "" {
@@ -98,11 +101,6 @@ func (s3backer *s3backerMounter) mountInit(vol *volume, target string) error {
 	} else {
 		// only set baseURL if not on AWS (region is not set)
 		// baseURL must end with /
-		// url, e := url.Parse(s3backer.url)
-		// if e != nil {
-		// 	return fmt.Errorf("parse endpoint: %w", e)
-		// }
-		// url.Path = path.Join(url.Path, vol.bucket, vol.prefix)
 		args = append(args, fmt.Sprintf("--baseURL=%s/", s3backer.url))
 	}
 	if s3backer.ssl {
