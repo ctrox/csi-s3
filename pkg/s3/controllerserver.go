@@ -73,20 +73,17 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	params[volumeAttributePrefix] = volume.Prefix
 
 	exists, err := s3.volumeExists(volume)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check volume existence: %w", err)
-	}
-	if exists {
+	if err != nil || !exists {
+		if err := s3.createVolume(volume); err != nil {
+			return nil, fmt.Errorf("failed to initialize empty volume:%v: %w", volume, err)
+		}
+	} else {
 		if e := s3.getVolume(volume); e != nil {
 			return nil, status.Error(codes.Internal, fmt.Sprintf("get volume metadata: %v", e))
 		}
 		// Check if volume capacity requested is bigger than the already existing capacity
 		if req.GetCapacityRange().GetRequiredBytes() > volume.Capacity {
 			return nil, status.Error(codes.AlreadyExists, fmt.Sprintf("volume with the same name (%s) but with smaller size already exists", volume.ID))
-		}
-	} else {
-		if err := s3.createVolume(volume); err != nil {
-			return nil, fmt.Errorf("failed to initialize empty volume:%v: %w", volume, err)
 		}
 	}
 
@@ -120,16 +117,13 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return nil, fmt.Errorf("failed to initialize S3 client: %s", err)
 	}
 	exists, err := s3.volumeExists(&volume{ID: volumeID})
-	if err != nil {
-		return nil, err
+	if err != nil || !exists {
+		glog.V(3).Infof("volume does not exist, return without error, internal error: %v", err)
+		return &csi.DeleteVolumeResponse{}, nil
 	}
-	if exists {
-		if err := s3.removeVolume(&volume{ID: volumeID}); err != nil {
-			glog.V(3).Infof("Failed to remove volume %s: %v", volumeID, err)
-			return nil, status.Error(codes.Internal, fmt.Sprintf("failed to delete volume %s, error: %v", volumeID, err))
-		}
-	} else {
-		glog.V(5).Infof("Bucket %s does not exist, ignoring request", volumeID)
+	if err := s3.removeVolume(&volume{ID: volumeID}); err != nil {
+		glog.V(3).Infof("Failed to remove volume %s: %v", volumeID, err)
+		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to delete volume %s, error: %v", volumeID, err))
 	}
 
 	return &csi.DeleteVolumeResponse{}, nil
@@ -150,10 +144,7 @@ func (cs *controllerServer) ValidateVolumeCapabilities(ctx context.Context, req 
 		return nil, fmt.Errorf("failed to initialize S3 client: %s", err)
 	}
 	exists, err := s3.volumeExists(&volume{ID: req.GetVolumeId()})
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
+	if err != nil || !exists {
 		// return an error if the volume requested does not exist
 		return nil, status.Error(codes.NotFound, fmt.Sprintf("Volume with id %s does not exist", req.GetVolumeId()))
 	}

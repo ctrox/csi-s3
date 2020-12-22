@@ -5,8 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
-	"path/filepath"
-	"strings"
+	"path"
 
 	"github.com/golang/glog"
 	"github.com/google/uuid"
@@ -74,12 +73,15 @@ func (client *s3Client) volumeExists(vol *volume) (bool, error) {
 		return exists, err
 	}
 
-	_, err := client.minio.GetObject(vol.Bucket, strings.TrimSuffix(vol.Prefix, "/")+"/", minio.GetObjectOptions{})
+	obj, err := client.minio.GetObject(vol.Bucket, path.Join(vol.Prefix, metadataName), minio.GetObjectOptions{})
 	if err != nil {
 		return false, err
 	}
-
-	return true, nil
+	content := &volume{}
+	if e := json.NewDecoder(obj).Decode(content); e != nil {
+		return false, e
+	}
+	return content.ID == vol.ID && content.Bucket == vol.Bucket && content.Prefix == vol.Prefix, nil
 }
 
 func (client *s3Client) createVolume(vol *volume) error {
@@ -99,9 +101,10 @@ func (client *s3Client) createVolume(vol *volume) error {
 	if e := json.NewEncoder(b).Encode(vol); e != nil {
 		return e
 	}
-	if _, err := client.minio.PutObject(vol.Bucket, filepath.Join(vol.Prefix, metadataName),
+	if _, err = client.minio.PutObject(vol.Bucket, path.Join(vol.Prefix, metadataName),
 		b, int64(b.Len()),
 		minio.PutObjectOptions{ContentType: "application/json"}); err != nil {
+		return fmt.Errorf("create metadata object: %w", err)
 	}
 
 	return nil
@@ -160,7 +163,7 @@ func (client *s3Client) completeVolume(vol *volume) {
 
 	if client.cfg.CommonBucket != "" {
 		vol.Bucket = client.cfg.CommonBucket
-		vol.Prefix = filepath.Join(client.cfg.CommonPrefix, hash)
+		vol.Prefix = path.Join(client.cfg.CommonPrefix, hash)
 		return
 	}
 
@@ -170,7 +173,7 @@ func (client *s3Client) completeVolume(vol *volume) {
 
 func (client *s3Client) getVolume(vol *volume) error {
 	client.completeVolume(vol)
-	obj, err := client.minio.GetObject(vol.Bucket, filepath.Join(vol.Prefix, metadataName), minio.GetObjectOptions{})
+	obj, err := client.minio.GetObject(vol.Bucket, path.Join(vol.Prefix, metadataName), minio.GetObjectOptions{})
 	if err != nil {
 		return err
 	}

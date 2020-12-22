@@ -3,6 +3,7 @@ package s3
 import (
 	"fmt"
 	"os"
+	"strings"
 )
 
 // Implements Mounter
@@ -34,18 +35,30 @@ func (s3fs *s3fsMounter) Unstage(*volume, string) error {
 
 func (s3fs *s3fsMounter) Mount(vol *volume, source string, target string) error {
 	if err := writes3fsPass(s3fs.pwFileContent); err != nil {
-		return err
+		return fmt.Errorf("write s3 fs pass: %w", err)
 	}
-	args := []string{
-		fmt.Sprintf("%s:/%s", vol.Bucket, vol.Prefix),
-		fmt.Sprintf("%s", target),
+
+	dev := vol.Bucket
+	if vol.Prefix != "" {
+		dev += ":/" + strings.TrimSuffix(vol.Prefix, "/")
+	}
+
+	opts := []string{
+		dev,
+		target,
+		"-f",
 		"-o", "use_path_request_style",
-		"-o", fmt.Sprintf("url=%s", s3fs.url),
-		"-o", fmt.Sprintf("endpoint=%s", s3fs.region),
+		"-o", "url=" + s3fs.url,
+		"-o", "endpoint=" + s3fs.region,
 		"-o", "allow_other",
 		"-o", "mp_umask=000",
 	}
-	return fuseMount(target, s3fsCmd, args)
+
+	if e := fuseMount(target, s3fsCmd, opts); e != nil {
+		return fmt.Errorf("failed to mount s3fs: %w", e)
+	}
+
+	return nil
 }
 
 func writes3fsPass(pwFileContent string) error {

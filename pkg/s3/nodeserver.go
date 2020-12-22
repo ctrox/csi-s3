@@ -80,11 +80,11 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 
 	s3, err := newS3ClientFromSecrets(req.GetSecrets())
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize S3 client: %s", err)
+		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to initialize S3 client: %s", err))
 	}
 	mounter, err := s3.mounter()
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to initialize s3 mounter: %s", err))
 	}
 	volume := &volume{
 		ID:     volumeID,
@@ -93,10 +93,10 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	}
 	s3.completeVolume(volume)
 	if err := s3.getVolume(volume); err != nil {
-		return nil, err
+		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to get volume detail: %s", err))
 	}
 	if err := mounter.Mount(volume, stagingTargetPath, targetPath); err != nil {
-		return nil, err
+		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to mount: %s", err))
 	}
 
 	glog.V(4).Infof("s3: bucket %s/%s successfuly mounted to %s", bucket, prefix, targetPath)

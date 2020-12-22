@@ -1,4 +1,4 @@
-FROM debian:stretch as s3backer
+FROM debian:buster as s3backer
 ARG S3BACKER_VERSION=1.5.6
 
 RUN apt-get update && apt-get install -y \
@@ -24,7 +24,7 @@ RUN ./autogen.sh && \
   make && \
   make install
 
-FROM debian:stretch
+FROM debian:buster
 LABEL maintainers="Cyrill Troxler <cyrilltroxler@gmail.com>"
 LABEL description="csi-s3 image"
 COPY --from=s3backer /usr/bin/s3backer /usr/bin/s3backer
@@ -33,7 +33,7 @@ COPY --from=s3backer /usr/bin/s3backer /usr/bin/s3backer
 RUN apt-get update && \
   apt-get install -y \
   libfuse2 gcc sqlite3 libsqlite3-dev \
-  s3fs psmisc procps libcurl3 xfsprogs curl unzip && \
+  s3fs psmisc procps xfsprogs curl unzip && \
   rm -rf /var/lib/apt/lists/*
 
 # install rclone

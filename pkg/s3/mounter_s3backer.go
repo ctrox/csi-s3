@@ -88,13 +88,16 @@ func (s3backer *s3backerMounter) mountInit(vol *volume, target string) error {
 	if cap == 0 {
 		cap = s3backerDefaultSize
 	}
+
 	args := []string{
 		fmt.Sprintf("--blockSize=%s", s3backerBlockSize),
 		fmt.Sprintf("--size=%v", cap),
 		"--listBlocks",
-		"-f",
-		path.Join(vol.Bucket, vol.Prefix),
-		target,
+		"-d",
+		// "-f",
+	}
+	if vol.Prefix != "" {
+		args = append(args, fmt.Sprintf("--prefix=%s/", vol.Prefix))
 	}
 	if s3backer.region != "" {
 		args = append(args, fmt.Sprintf("--region=%s", s3backer.region))
@@ -106,6 +109,8 @@ func (s3backer *s3backerMounter) mountInit(vol *volume, target string) error {
 	if s3backer.ssl {
 		args = append(args, "--ssl")
 	}
+	// args = append(args, path.Join(vol.Bucket, vol.Prefix), target)
+	args = append(args, vol.Bucket, target)
 
 	return fuseMount(target, s3backerCmd, args)
 }

@@ -14,16 +14,12 @@ import (
 )
 
 var _ = Describe("S3Driver", func() {
-	// for _, mounter := range []string{"s3fs"} {
-	for _, mounter := range []string{"goofys", "s3fs", "s3backer", "rclone"} {
+	for _, mounter := range []string{"goofys", "rclone"} {
 		Context(mounter, func() {
-			// for _, commonBucket := range []string{"", "csi-bucket"} {
-			// 	for _, commonPrefix := range []string{"", "csi/prefix"} {
+			for _, commonBucket := range []string{"", "csi-bucket"} {
+				for _, commonPrefix := range []string{"", "csi/prefix"} {
 
-			for _, commonBucket := range []string{""} {
-				for _, commonPrefix := range []string{""} {
-
-					label := strings.Join([]string{mounter, commonBucket, strings.ReplaceAll(commonPrefix, "/", "-")}, "_")
+					label := strings.Join([]string{mounter, commonBucket, strings.ReplaceAll(commonPrefix, "/", "-")}, "-")
 					Describe("CSI sanity: "+label, func() {
 						socket := fmt.Sprintf("/tmp/csi-%s.sock", label)
 						csiEndpoint := "unix://" + socket

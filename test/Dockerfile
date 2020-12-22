@@ -1,4 +1,4 @@
-FROM ctrox/csi-s3:v1.1.1-full
+FROM ctrox/csi-s3:dev-full
 LABEL maintainers="Cyrill Troxler <cyrilltroxler@gmail.com>"
 LABEL description="csi-s3 testing image"
 
