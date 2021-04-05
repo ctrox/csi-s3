@@ -95,7 +95,6 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 				Mounter:       mounter,
 				CapacityBytes: capacityBytes,
 				FSPath:        defaultFsPath,
-				CreatedByCsi:  false,
 			}
 		} else {
 			// Check if volume capacity requested is bigger than the already existing capacity
@@ -119,7 +118,6 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			Mounter:       mounter,
 			CapacityBytes: capacityBytes,
 			FSPath:        defaultFsPath,
-			CreatedByCsi:  !exists,
 		}
 	}
 	if err := client.SetFSMeta(meta); err != nil {
@@ -155,31 +153,24 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize S3 client: %s", err)
 	}
-	exists, err := client.BucketExists(bucketName)
-	if err != nil {
-		return nil, err
+
+	if _, err := client.GetFSMeta(bucketName, prefix); err != nil {
+		glog.V(5).Infof("FSMeta of volume %s does not exist, ignoring delete request", volumeID)
+		return &csi.DeleteVolumeResponse{}, nil
 	}
-	if exists {
-		meta, err := client.GetFSMeta(bucketName, prefix)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get metadata of buckect %s", volumeID)
+
+	if prefix == "" {
+		// prefix is empty, we delete the whole bucket
+		if err := client.RemoveBucket(bucketName); err != nil {
+			glog.V(3).Infof("Failed to remove volume %s: %v", volumeID, err)
+			return nil, err
 		}
-		if prefix != "" {
-			if err := client.RemovePrefix(bucketName, prefix); err != nil {
-				return nil, fmt.Errorf("unable to remove prefix: %w", err)
-			}
-		}
-		if meta.CreatedByCsi {
-			if err := client.RemoveBucket(bucketName); err != nil {
-				glog.V(3).Infof("Failed to remove volume %s: %v", volumeID, err)
-				return nil, err
-			}
-			glog.V(4).Infof("Bucket %s removed", volumeID)
-		} else {
-			glog.V(4).Infof("Bucket %s is not created by csi-s3, will not be deleted by csi-s3 automatically.", volumeID)
-		}
+		glog.V(4).Infof("Bucket %s removed", bucketName)
 	} else {
-		glog.V(5).Infof("Bucket %s does not exist, ignoring request", volumeID)
+		if err := client.RemovePrefix(bucketName, prefix); err != nil {
+			return nil, fmt.Errorf("unable to remove prefix: %w", err)
+		}
+		glog.V(4).Infof("Prefix %s removed", prefix)
 	}
 
 	return &csi.DeleteVolumeResponse{}, nil
