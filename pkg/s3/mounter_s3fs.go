@@ -34,7 +34,7 @@ func (s3fs *s3fsMounter) Unstage(stageTarget string) error {
 	return nil
 }
 
-func (s3fs *s3fsMounter) Mount(source string, target string) error {
+func (s3fs *s3fsMounter) Mount(source string, target string, attrib map[string]string) error {
 	if err := writes3fsPass(s3fs.pwFileContent); err != nil {
 		return err
 	}
