@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/url"
 	"path"
+	"reflect"
 
 	"github.com/golang/glog"
 	"github.com/minio/minio-go/v7"
@@ -36,6 +37,7 @@ type Config struct {
 type FSMeta struct {
 	BucketName    string `json:"Name"`
 	Prefix        string `json:"Prefix"`
+	UsePrefix     string `json:"UsePrefix"`
 	Mounter       string `json:"Mounter"`
 	FSPath        string `json:"FSPath"`
 	CapacityBytes int64  `json:"CapacityBytes"`
@@ -249,4 +251,10 @@ func (client *s3Client) GetFSMeta(bucketName, prefix string) (*FSMeta, error) {
 	var meta FSMeta
 	err = json.Unmarshal(b, &meta)
 	return &meta, err
+}
+
+func (client *s3Client) GetFSMetaField(meta *FSMeta, field string) string {
+	r := reflect.ValueOf(meta)
+	f := reflect.Indirect(r).FieldByName(field)
+	return f.String()
 }

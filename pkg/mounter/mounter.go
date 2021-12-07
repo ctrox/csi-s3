@@ -31,6 +31,8 @@ const (
 	rcloneMounterType   = "rclone"
 	TypeKey             = "mounter"
 	BucketKey           = "bucket"
+	VolumePrefix        = "prefix"
+	UsePrefix           = "usePrefix"
 )
 
 // New returns a new mounter depending on the mounterType parameter
