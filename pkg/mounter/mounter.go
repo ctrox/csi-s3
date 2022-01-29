@@ -13,7 +13,7 @@ import (
 	"github.com/ctrox/csi-s3/pkg/s3"
 	"github.com/golang/glog"
 	"github.com/mitchellh/go-ps"
-	"k8s.io/kubernetes/pkg/util/mount"
+	"k8s.io/mount-utils"
 )
 
 // Mounter interface which can be implemented
@@ -62,10 +62,11 @@ func New(meta *s3.FSMeta, cfg *s3.Config) (Mounter, error) {
 func fuseMount(path string, command string, args []string) error {
 	cmd := exec.Command(command, args...)
 	glog.V(3).Infof("Mounting fuse with command: %s and args: %s", command, args)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("Error fuseMount command: %s\nargs: %s\noutput: %s", command, args, out)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("Error fuseMount command: %s\nargs: %s\noutput", command, args)
 	}
 
 	return waitForMount(path, 10*time.Second)
@@ -93,7 +94,7 @@ func waitForMount(path string, timeout time.Duration) error {
 	var elapsed time.Duration
 	var interval = 10 * time.Millisecond
 	for {
-		notMount, err := mount.New("").IsNotMountPoint(path)
+		notMount, err := mount.New("").IsLikelyNotMountPoint(path)
 		if err != nil {
 			return err
 		}
