@@ -13,7 +13,7 @@ import (
 	"github.com/ctrox/csi-s3/pkg/s3"
 	"github.com/golang/glog"
 	"github.com/mitchellh/go-ps"
-	"k8s.io/kubernetes/pkg/util/mount"
+	"k8s.io/mount-utils"
 )
 
 // Mounter interface which can be implemented
@@ -93,7 +93,7 @@ func waitForMount(path string, timeout time.Duration) error {
 	var elapsed time.Duration
 	var interval = 10 * time.Millisecond
 	for {
-		notMount, err := mount.New("").IsNotMountPoint(path)
+		notMount, err := mount.New("").IsLikelyNotMountPoint(path)
 		if err != nil {
 			return err
 		}

@@ -9,6 +9,7 @@ import (
 
 	"github.com/ctrox/csi-s3/pkg/s3"
 	goofysApi "github.com/kahing/goofys/api"
+	"github.com/kahing/goofys/api/common"
 )
 
 const (
@@ -49,14 +50,16 @@ func (goofys *goofysMounter) Unstage(stageTarget string) error {
 }
 
 func (goofys *goofysMounter) Mount(source string, target string) error {
-	goofysCfg := &goofysApi.Config{
+	goofysCfg := &common.FlagStorage{
 		MountPoint: target,
 		Endpoint:   goofys.endpoint,
-		Region:     goofys.region,
 		DirMode:    0755,
 		FileMode:   0644,
 		MountOptions: map[string]string{
 			"allow_other": "",
+		},
+		Backend: &common.S3Config{
+			Region: goofys.region,
 		},
 	}
 
