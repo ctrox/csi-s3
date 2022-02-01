@@ -51,7 +51,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	volumeID := sanitizeVolumeID(req.GetName())
 	bucketName := volumeID
 	prefix := ""
-	usePrefix := params[mounter.UsePrefix]
+	usePrefix, usePrefixError := strconv.ParseBool(params[mounter.UsePrefix])
 	defaultFsPath := defaultFsPath
 
 	// check if bucket name is overridden
@@ -62,7 +62,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}
 
 	// check if volume prefix is overridden
-	if overridePrefix, err := strconv.ParseBool(usePrefix); err == nil && overridePrefix {
+	if overridePrefix := usePrefix; usePrefixError == nil && overridePrefix {
 		prefix = ""
 		defaultFsPath = ""
 		if prefixOverride, ok := params[mounter.VolumePrefix]; ok && prefixOverride != "" {
@@ -167,9 +167,10 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	}
 
 	var deleteErr error
-	if usePrefix, err := strconv.ParseBool(client.GetFSMetaField(meta, mounter.UsePrefix)); err == nil && usePrefix {
+	if meta.UsePrefix {
 		// UsePrefix is true, we do not delete anything
 		glog.V(4).Infof("Nothing to remove for %s", bucketName)
+		return &csi.DeleteVolumeResponse{}, nil
 	} else if prefix == "" {
 		// prefix is empty, we delete the whole bucket
 		if err := client.RemoveBucket(bucketName); err != nil {

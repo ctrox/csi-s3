@@ -118,11 +118,12 @@ reclaimPolicy: Retain
 parameters:
   mounter: rclone
   bucket: some-existing-bucket-name
-  # 'usePrefix' must be true in order to enable the prefix feature and to avoid the removal of the bucket
+  # 'usePrefix' must be true in order to enable the prefix feature and to avoid the removal of the prefix or bucket
   usePrefix: "true"
   # 'prefix' can be empty (it will mount on the root of the bucket), an existing prefix or a new one.
   prefix: custom-prefix
 ```
+**Note:** all volumes created with this `StorageClass` will always be mounted to the same bucket and path, meaning they will be identical.
 
 ### Mounter
 
