@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"path"
+	"strconv"
 	"strings"
 
 	"github.com/ctrox/csi-s3/pkg/mounter"
@@ -50,11 +51,23 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	volumeID := sanitizeVolumeID(req.GetName())
 	bucketName := volumeID
 	prefix := ""
+	usePrefix, usePrefixError := strconv.ParseBool(params[mounter.UsePrefix])
+	defaultFsPath := defaultFsPath
 
 	// check if bucket name is overridden
 	if nameOverride, ok := params[mounter.BucketKey]; ok {
 		bucketName = nameOverride
 		prefix = volumeID
+		volumeID = path.Join(bucketName, prefix)
+	}
+
+	// check if volume prefix is overridden
+	if overridePrefix := usePrefix; usePrefixError == nil && overridePrefix {
+		prefix = ""
+		defaultFsPath = ""
+		if prefixOverride, ok := params[mounter.VolumePrefix]; ok && prefixOverride != "" {
+			prefix = prefixOverride
+		}
 		volumeID = path.Join(bucketName, prefix)
 	}
 
@@ -75,6 +88,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	meta := &s3.FSMeta{
 		BucketName:    bucketName,
+		UsePrefix:     usePrefix,
 		Prefix:        prefix,
 		Mounter:       mounterType,
 		CapacityBytes: capacityBytes,
@@ -108,7 +122,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		}
 	}
 
-	if err = client.CreatePrefix(bucketName, path.Join(prefix, defaultFsPath)); err != nil {
+	if err = client.CreatePrefix(bucketName, path.Join(prefix, defaultFsPath)); err != nil && prefix != "" {
 		return nil, fmt.Errorf("failed to create prefix %s: %v", path.Join(prefix, defaultFsPath), err)
 	}
 
@@ -153,7 +167,11 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	}
 
 	var deleteErr error
-	if prefix == "" {
+	if meta.UsePrefix {
+		// UsePrefix is true, we do not delete anything
+		glog.V(4).Infof("Nothing to remove for %s", bucketName)
+		return &csi.DeleteVolumeResponse{}, nil
+	} else if prefix == "" {
 		// prefix is empty, we delete the whole bucket
 		if err := client.RemoveBucket(bucketName); err != nil {
 			deleteErr = err

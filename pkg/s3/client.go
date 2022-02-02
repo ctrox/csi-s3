@@ -5,13 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/url"
-	"path"
-
 	"github.com/golang/glog"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	"io"
+	"net/url"
+	"path"
 )
 
 const (
@@ -36,6 +35,7 @@ type Config struct {
 type FSMeta struct {
 	BucketName    string `json:"Name"`
 	Prefix        string `json:"Prefix"`
+	UsePrefix     bool   `json:"UsePrefix"`
 	Mounter       string `json:"Mounter"`
 	FSPath        string `json:"FSPath"`
 	CapacityBytes int64  `json:"CapacityBytes"`

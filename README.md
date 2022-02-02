@@ -104,6 +104,27 @@ parameters:
 
 If the bucket is specified, it will still be created if it does not exist on the backend. Every volume will get its own prefix within the bucket which matches the volume ID. When deleting a volume, also just the prefix will be deleted.
 
+#### Using an existing bucket with custom prefix
+
+If you have an existing bucket and with or without a prefix (subpath), you can specify to use a prefixed configuration by setting the parameters as:
+
+```yaml
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: csi-s3-existing-bucket
+provisioner: ch.ctrox.csi.s3-driver
+reclaimPolicy: Retain
+parameters:
+  mounter: rclone
+  bucket: some-existing-bucket-name
+  # 'usePrefix' must be true in order to enable the prefix feature and to avoid the removal of the prefix or bucket
+  usePrefix: "true"
+  # 'prefix' can be empty (it will mount on the root of the bucket), an existing prefix or a new one.
+  prefix: custom-prefix
+```
+**Note:** all volumes created with this `StorageClass` will always be mounted to the same bucket and path, meaning they will be identical.
+
 ### Mounter
 
 As S3 is not a real file system there are some limitations to consider here. Depending on what mounter you are using, you will have different levels of POSIX compability. Also depending on what S3 storage backend you are using there are not always [consistency guarantees](https://github.com/gaul/are-we-consistent-yet#observed-consistency).
