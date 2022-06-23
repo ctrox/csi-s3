@@ -1,0 +1,12 @@
+apiVersion: v2
+name: csi-s3
+description: A Container Storage Interface for S3
+type: application
+version: 0.1.0
+appVersion: "1.1.1"
+keywords:
+  - s3
+  - csi
+home: https://github.com/ctrox/csi-s3
+sources:
+  - https://github.com/ctrox/csi-s3/deploy/helm

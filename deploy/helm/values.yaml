@@ -1,0 +1,76 @@
+# Default values for csi-s3.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+attacher:
+  image:
+    repository: quay.io/k8scsi/csi-attacher
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: v2.2.0
+
+provisioner:
+  image:
+    repository: quay.io/k8scsi/csi-provisioner
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: v2.1.0
+
+registrar:
+  image:
+    repository: quay.io/k8scsi/csi-node-driver-registrar
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: v1.2.0
+
+csi:
+  image:
+    repository: ctrox/csi-s3
+    pullPolicy: Always
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: v1.2.0-rc.2
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+secret:
+  # Specifies whether the secret should be created
+  create: true
+  # Name of the secret
+  name: csi-s3-secret
+  # S3 Access Key
+  accessKey: ""
+  # S3 Secret Key
+  secretKey: ""
+  # Endpoint
+  endpoint: https://s3.amazonaws.com
+
+storageClass:
+  # Specifies whether the storage class should be created
+  create: true
+  # Name
+  name: csi-s3
+  # Either s3fs, rclone, goofys or s3backer
+  mounter: s3fs
+  # An existing bucket or leave blank to create
+  bucket: ""
+  # Volume reclaim policy
+  reclaimPolicy: Delete
+  # Annotations for the storage class
+  # Example:
+  # annotations:
+  #   storageclass.kubernetes.io/is-default-class: "true"
+  annotations: {}
+  # 'usePrefix' must be true in order to enable the prefix feature and to avoid the removal of the prefix or bucket
+  usePrefix:
+  # 'prefix' can be empty (it will mount on the root of the bucket), an existing prefix or a new one.
+  prefix:

@@ -1,0 +1,29 @@
+{{- if .Values.storageClass.create -}}
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: "{{ .Values.storageClass.name }}"
+{{- if .Values.storageClass.annotations }}
+  annotations:
+{{ toYaml .Values.storageClass.annotations | indent 4 }}
+{{- end }}
+provisioner: ch.ctrox.csi.s3-driver
+reclaimPolicy: "{{ .Values.storageClass.reclaimPolicy }}"
+parameters:
+  mounter: "{{ .Values.storageClass.mounter }}"
+{{- if .Values.storageClass.bucket }}
+  bucket: "{{ .Values.storageClass.bucket }}"
+{{- end }}
+{{- if .Values.storageClass.usePrefix }}
+  usePrefix: "true"
+{{- end }}
+  prefix: "{{ .Values.storageClass.prefix }}"
+  csi.storage.k8s.io/provisioner-secret-name: {{ .Values.secret.name }}
+  csi.storage.k8s.io/provisioner-secret-namespace: {{ .Release.Namespace }}
+  csi.storage.k8s.io/controller-publish-secret-name: {{ .Values.secret.name }}
+  csi.storage.k8s.io/controller-publish-secret-namespace: {{ .Release.Namespace }}
+  csi.storage.k8s.io/node-stage-secret-name: {{ .Values.secret.name }}
+  csi.storage.k8s.io/node-stage-secret-namespace: {{ .Release.Namespace }}
+  csi.storage.k8s.io/node-publish-secret-name: {{ .Values.secret.name }}
+  csi.storage.k8s.io/node-publish-secret-namespace: {{ .Release.Namespace }}
+{{- end -}}
