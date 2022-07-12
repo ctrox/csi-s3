@@ -54,6 +54,7 @@ spec:
     spec:
       serviceAccount: csi-s3
       hostNetwork: true
+      dnsPolicy: "ClusterFirstWithHostNet"
       containers:
         - name: driver-registrar
           image: quay.io/k8scsi/csi-node-driver-registrar:v1.2.0
