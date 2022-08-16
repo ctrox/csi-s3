@@ -95,6 +95,9 @@ spec:
                 fieldRef:
                   fieldPath: spec.nodeName
           volumeMounts:
+            - name: plugins-dir
+              mountPath: /var/lib/kubelet/plugins
+              mountPropagation: "Bidirectional"
             - name: plugin-dir
               mountPath: /csi
             - name: pods-mount-dir
@@ -103,6 +106,10 @@ spec:
             - name: fuse-device
               mountPath: /dev/fuse
       volumes:
+        - name: plugins-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins
+            type: Directory
         - name: registration-dir
           hostPath:
             path: /var/lib/kubelet/plugins_registry/

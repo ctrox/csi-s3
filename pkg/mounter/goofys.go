@@ -74,3 +74,7 @@ func (goofys *goofysMounter) Mount(source string, target string) error {
 	}
 	return nil
 }
+
+func (goofys *goofysMounter) Unmount(target string) error {
+	return FuseUnmount(target)
+}
