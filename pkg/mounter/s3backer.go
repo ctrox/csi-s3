@@ -8,6 +8,7 @@ import (
 
 	osexec "os/exec"
 
+	"github.com/ctrox/csi-s3/pkg/common"
 	"github.com/ctrox/csi-s3/pkg/s3"
 	"github.com/golang/glog"
 	"k8s.io/mount-utils"
@@ -94,6 +95,10 @@ func (s3backer *s3backerMounter) Mount(source string, target string) error {
 		return err
 	}
 	return nil
+}
+
+func (s3backer *s3backerMounter) Unmount(target string) error {
+	return common.CleanupMountPoint(target)
 }
 
 func (s3backer *s3backerMounter) mountInit(p string) error {

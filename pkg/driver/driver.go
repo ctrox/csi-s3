@@ -21,6 +21,8 @@ import (
 	"github.com/golang/glog"
 
 	csicommon "github.com/kubernetes-csi/drivers/pkg/csi-common"
+
+	"github.com/ctrox/csi-s3/pkg/common"
 )
 
 type driver struct {
@@ -66,6 +68,7 @@ func (s3 *driver) newControllerServer(d *csicommon.CSIDriver) *controllerServer 
 func (s3 *driver) newNodeServer(d *csicommon.CSIDriver) *nodeServer {
 	return &nodeServer{
 		DefaultNodeServer: csicommon.NewDefaultNodeServer(d),
+		volumeMutexes:     common.NewKeyMutex(32),
 	}
 }
 
