@@ -1,10 +1,11 @@
-FROM golang:1.16-alpine as gobuild
+FROM golang:1.18-alpine as gobuild
 
+ARG TAGS=all
 WORKDIR /build
 ADD . /build
 
 RUN go get -d -v ./...
-RUN CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o ./s3driver ./cmd/s3driver
+RUN CGO_ENABLED=0 GOOS=linux go build --tags ${TAGS} -a -ldflags '-extldflags "-static"' -o ./s3driver ./cmd/s3driver
 
 FROM debian:buster-slim
 LABEL maintainers="Cyrill Troxler <cyrilltroxler@gmail.com>"
@@ -17,7 +18,7 @@ RUN apt-get update && \
   rm -rf /var/lib/apt/lists/*
 
 # install rclone
-ARG RCLONE_VERSION=v1.54.1
+ARG RCLONE_VERSION=v1.60.1
 RUN cd /tmp \
   && curl -O https://downloads.rclone.org/${RCLONE_VERSION}/rclone-${RCLONE_VERSION}-linux-amd64.zip \
   && unzip /tmp/rclone-${RCLONE_VERSION}-linux-amd64.zip \
