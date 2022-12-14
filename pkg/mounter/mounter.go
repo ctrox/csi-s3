@@ -24,6 +24,10 @@ type Mounter interface {
 	Mount(source string, target string) error
 }
 
+type FactoryFunc func(*s3.FSMeta, *s3.Config) (Mounter, error)
+
+var mounters map[string]FactoryFunc
+
 const (
 	s3fsMounterType     = "s3fs"
 	goofysMounterType   = "goofys"
@@ -35,6 +39,13 @@ const (
 	UsePrefix           = "usePrefix"
 )
 
+func registerMounter(name string, fn FactoryFunc) {
+	if mounters == nil {
+		mounters = make(map[string]FactoryFunc)
+	}
+	mounters[name] = fn
+}
+
 // New returns a new mounter depending on the mounterType parameter
 func New(meta *s3.FSMeta, cfg *s3.Config) (Mounter, error) {
 	mounter := meta.Mounter
@@ -42,33 +53,28 @@ func New(meta *s3.FSMeta, cfg *s3.Config) (Mounter, error) {
 	if len(meta.Mounter) == 0 {
 		mounter = cfg.Mounter
 	}
-	switch mounter {
-	case s3fsMounterType:
-		return newS3fsMounter(meta, cfg)
 
-	case goofysMounterType:
-		return newGoofysMounter(meta, cfg)
-
-	case s3backerMounterType:
-		return newS3backerMounter(meta, cfg)
-
-	case rcloneMounterType:
-		return newRcloneMounter(meta, cfg)
-
-	default:
-		// default to s3backer
-		return newS3backerMounter(meta, cfg)
+	fn, ok := mounters[mounter]
+	if !ok {
+		return nil, fmt.Errorf("no mounter with name %s available", mounter)
 	}
+
+	return fn(meta, cfg)
 }
 
 func fuseMount(path string, command string, args []string) error {
 	cmd := exec.Command(command, args...)
-	glog.V(3).Infof("Mounting fuse with command: %s and args: %s", command, args)
+	glog.V(3).Infof("Mounting fuse with command: %s and args: %#v", command, args)
+
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Setsid: true,
+	}
+
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("Error fuseMount command: %s\nargs: %s\noutput", command, args)
+		return fmt.Errorf("Error fuseMount command: %s\nargs: %#v\nerror: %s", command, args, err.Error())
 	}
 
 	return waitForMount(path, 10*time.Second)

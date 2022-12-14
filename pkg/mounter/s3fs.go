@@ -1,3 +1,5 @@
+//go:build all || s3fs
+
 package mounter
 
 import (
@@ -20,7 +22,15 @@ const (
 	s3fsCmd = "s3fs"
 )
 
+func init() {
+	registerMounter(s3fsMounterType, newS3fsMounter)
+}
+
 func newS3fsMounter(meta *s3.FSMeta, cfg *s3.Config) (Mounter, error) {
+	if len(meta.MounterOptions) > 0 {
+		return nil, fmt.Errorf("custom mount options are not supported for s3fs")
+	}
+
 	return &s3fsMounter{
 		meta:          meta,
 		url:           cfg.Endpoint,

@@ -95,6 +95,14 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		FSPath:        defaultFsPath,
 	}
 
+	meta.MounterOptions = make(map[string]string)
+	optionPrefix := meta.Mounter + "-"
+	for key, value := range params {
+		if strings.HasPrefix(key, optionPrefix) {
+			meta.MounterOptions[strings.TrimPrefix(key, optionPrefix)] = value
+		}
+	}
+
 	client, err := s3.NewClientFromSecret(req.GetSecrets())
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize S3 client: %s", err)

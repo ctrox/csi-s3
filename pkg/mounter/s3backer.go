@@ -1,3 +1,5 @@
+//go:build all || s3backer
+
 package mounter
 
 import (
@@ -24,6 +26,10 @@ type s3backerMounter struct {
 	ssl             bool
 }
 
+func init() {
+	registerMounter(s3backerMounterType, newS3backerMounter)
+}
+
 const (
 	s3backerCmd    = "s3backer"
 	s3backerFsType = "xfs"
@@ -45,6 +51,11 @@ func newS3backerMounter(meta *s3.FSMeta, cfg *s3.Config) (Mounter, error) {
 	if meta.CapacityBytes == 0 {
 		meta.CapacityBytes = s3backerDefaultSize
 	}
+
+	if len(meta.MounterOptions) > 0 {
+		return nil, fmt.Errorf("custom mount options are not supported for s3backer")
+	}
+
 	s3backer := &s3backerMounter{
 		meta:            meta,
 		url:             cfg.Endpoint,
