@@ -20,10 +20,13 @@ rules:
     verbs: ["get", "list", "watch", "update"]
   - apiGroups: ["storage.k8s.io"]
     resources: ["storageclasses"]
-    verbs: ["get", "list", "watch"]
+    verbs: ["get", "list", "watch", "update", "patch" ]
   - apiGroups: [""]
     resources: ["events"]
     verbs: ["list", "watch", "create", "update", "patch"]
+  - apiGroups: [ "storage.k8s.io" ]
+    resources: [ "volumeattachments" ]
+    verbs: [ "get", "list", "watch", "update", "patch" ]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -102,6 +105,18 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /var/lib/kubelet/plugins/ch.ctrox.csi.s3-driver
+        - name: csi-attacher
+            image: quay.io/k8scsi/csi-attacher:v2.2.0
+            args:
+              - "--v=4"
+              - "--csi-address=$(ADDRESS)"
+            env:
+              - name: ADDRESS
+                value: /var/lib/kubelet/plugins/ch.ctrox.csi.s3-driver/csi.sock
+            imagePullPolicy: "IfNotPresent"
+            volumeMounts:
+              - name: socket-dir
+                mountPath: /var/lib/kubelet/plugins/ch.ctrox.csi.s3-driver
       volumes:
         - name: socket-dir
           emptyDir: {}
