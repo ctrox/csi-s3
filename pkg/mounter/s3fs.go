@@ -1,6 +1,7 @@
 package mounter
 
 import (
+	"encoding/base64"
 	"fmt"
 	"os"
 	"path"
@@ -38,7 +39,8 @@ func (s3fs *s3fsMounter) Unstage(stageTarget string) error {
 }
 
 func (s3fs *s3fsMounter) Mount(source string, target string) error {
-	if err := writes3fsPass(s3fs.pwFileContent); err != nil {
+	err, passwordFileName := writes3fsPass(s3fs.pwFileContent)
+	if err != nil {
 		return err
 	}
 	args := []string{
@@ -49,20 +51,22 @@ func (s3fs *s3fsMounter) Mount(source string, target string) error {
 		"-o", fmt.Sprintf("endpoint=%s", s3fs.region),
 		"-o", "allow_other",
 		"-o", "mp_umask=000",
+		"-o", fmt.Sprintf("passwd_file=%s", passwordFileName),
 	}
 	return fuseMount(target, s3fsCmd, args)
 }
 
-func writes3fsPass(pwFileContent string) error {
-	pwFileName := fmt.Sprintf("%s/.passwd-s3fs", os.Getenv("HOME"))
+func writes3fsPass(pwFileContent string) (error, string) {
+	passwdFileName := base64.StdEncoding.EncodeToString([]byte(pwFileContent))
+	pwFileName := fmt.Sprintf("%s/%s", os.Getenv("HOME"), passwdFileName)
 	pwFile, err := os.OpenFile(pwFileName, os.O_RDWR|os.O_CREATE, 0600)
 	if err != nil {
-		return err
+		return err, ""
 	}
 	_, err = pwFile.WriteString(pwFileContent)
 	if err != nil {
-		return err
+		return err, ""
 	}
 	pwFile.Close()
-	return nil
+	return nil, pwFileName
 }
