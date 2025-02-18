@@ -68,7 +68,7 @@ func fuseMount(path string, command string, args []string) error {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("Error fuseMount command: %s\nargs: %s\noutput", command, args)
+		return fmt.Errorf("Error fuseMount command: %s\nargs: %s\noutput err %v", command, args, err)
 	}
 
 	return waitForMount(path, 10*time.Second)
