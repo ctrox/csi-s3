@@ -61,6 +61,8 @@ func (goofys *goofysMounter) Mount(source string, target string) error {
 		Backend: &common.S3Config{
 			Region: goofys.region,
 		},
+		Gid: goofys.meta.Gid,
+		Uid: goofys.meta.Uid,
 	}
 
 	os.Setenv("AWS_ACCESS_KEY_ID", goofys.accessKeyID)

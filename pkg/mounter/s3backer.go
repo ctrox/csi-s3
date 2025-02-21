@@ -116,6 +116,13 @@ func (s3backer *s3backerMounter) mountInit(p string) error {
 		args = append(args, "--ssl")
 	}
 
+	if s3backer.meta.Gid != 0 {
+		args = append(args, fmt.Sprintf("--gid=%d", s3backer.meta.Gid))
+	}
+	if s3backer.meta.Uid != 0 {
+		args = append(args, fmt.Sprintf("--uid=%d", s3backer.meta.Uid))
+	}
+
 	return fuseMount(p, s3backerCmd, args)
 }
 

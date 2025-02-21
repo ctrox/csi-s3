@@ -5,12 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/golang/glog"
-	"github.com/minio/minio-go/v7"
-	"github.com/minio/minio-go/v7/pkg/credentials"
 	"io"
 	"net/url"
 	"path"
+
+	"github.com/golang/glog"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
 const (
@@ -39,6 +40,8 @@ type FSMeta struct {
 	Mounter       string `json:"Mounter"`
 	FSPath        string `json:"FSPath"`
 	CapacityBytes int64  `json:"CapacityBytes"`
+	Uid           uint32 `json:"Uid"`
+	Gid           uint32 `json:"Gid"`
 }
 
 func NewClient(cfg *Config) (*s3Client, error) {

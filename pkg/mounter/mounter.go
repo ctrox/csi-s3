@@ -33,6 +33,8 @@ const (
 	BucketKey           = "bucket"
 	VolumePrefix        = "prefix"
 	UsePrefix           = "usePrefix"
+	Gid                 = "gid"
+	Uid                 = "uid"
 )
 
 // New returns a new mounter depending on the mounterType parameter
