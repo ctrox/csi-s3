@@ -52,10 +52,12 @@ func (s3fs *s3fsMounter) Mount(source string, target string) error {
 	}
 
 	if s3fs.meta.Gid != 0 {
-		args = append(args, fmt.Sprintf("-o", fmt.Sprintf("gid=%d", s3fs.meta.Gid)))
+		args = append(args, "-o")
+		args = append(args, fmt.Sprintf("gid=%d", s3fs.meta.Gid))
 	}
 	if s3fs.meta.Uid != 0 {
-		args = append(args, fmt.Sprintf("-o", fmt.Sprintf("uid=%d", s3fs.meta.Uid)))
+		args = append(args, "-o")
+		args = append(args, fmt.Sprintf("uid=%d", s3fs.meta.Uid))
 	}
 
 	return fuseMount(target, s3fsCmd, args)
