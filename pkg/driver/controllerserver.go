@@ -53,6 +53,16 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	prefix := ""
 	usePrefix, usePrefixError := strconv.ParseBool(params[mounter.UsePrefix])
 	defaultFsPath := defaultFsPath
+	gid := uint32(0)
+	uid := uint32(0)
+	if params[mounter.Gid] != "" {
+		parsed, _ := strconv.ParseInt(params[mounter.Gid], 10, 32)
+		gid = uint32(parsed)
+	}
+	if params[mounter.Uid] != "" {
+		parsed, _ := strconv.ParseInt(params[mounter.Uid], 10, 32)
+		uid = uint32(parsed)
+	}
 
 	// check if bucket name is overridden
 	if nameOverride, ok := params[mounter.BucketKey]; ok {
@@ -93,6 +103,8 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		Mounter:       mounterType,
 		CapacityBytes: capacityBytes,
 		FSPath:        defaultFsPath,
+		Uid:           uid,
+		Gid:           gid,
 	}
 
 	client, err := s3.NewClientFromSecret(req.GetSecrets())
