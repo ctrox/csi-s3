@@ -1,5 +1,7 @@
 # CSI for S3
 
+**This project has been unmaintained for quite some time and right now I don't have the time to pick it up again. If you are looking for an alternative, there is this [fork](https://github.com/yandex-cloud/k8s-csi-s3).**
+
 This is a Container Storage Interface ([CSI](https://github.com/container-storage-interface/spec/blob/master/spec.md)) for S3 (or S3 compatible) storage. This can dynamically allocate buckets and mount them via a fuse mount into any container.
 
 ## Status
