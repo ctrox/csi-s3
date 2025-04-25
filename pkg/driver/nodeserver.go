@@ -19,7 +19,9 @@ package driver
 import (
 	"fmt"
 	"os"
+	"sync"
 
+	"github.com/ctrox/csi-s3/pkg/common"
 	"github.com/ctrox/csi-s3/pkg/mounter"
 	"github.com/ctrox/csi-s3/pkg/s3"
 	"github.com/golang/glog"
@@ -35,13 +37,15 @@ import (
 
 type nodeServer struct {
 	*csicommon.DefaultNodeServer
+
+	// information about the managed volumes
+	volumes       sync.Map
+	volumeMutexes *common.KeyMutex
 }
 
 func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	volumeID := req.GetVolumeId()
 	targetPath := req.GetTargetPath()
-	stagingTargetPath := req.GetStagingTargetPath()
-	bucketName, prefix := volumeIDToBucketPrefix(volumeID)
 
 	// Check arguments
 	if req.GetVolumeCapability() == nil {
@@ -49,9 +53,6 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	}
 	if len(volumeID) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID missing in request")
-	}
-	if len(stagingTargetPath) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "Staging Target path missing in request")
 	}
 	if len(targetPath) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Target path missing in request")
@@ -79,21 +80,17 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	glog.V(4).Infof("target %v\ndevice %v\nreadonly %v\nvolumeId %v\nattributes %v\nmountflags %v\n",
 		targetPath, deviceID, readOnly, volumeID, attrib, mountFlags)
 
-	s3, err := s3.NewClientFromSecret(req.GetSecrets())
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize S3 client: %s", err)
-	}
-	meta, err := s3.GetFSMeta(bucketName, prefix)
-	if err != nil {
-		return nil, err
+	volumeMutex := ns.getVolumeMutex(volumeID)
+	volumeMutex.Lock()
+	defer volumeMutex.Unlock()
+
+	volume, ok := ns.volumes.Load(volumeID)
+	if !ok {
+		return nil, status.Error(codes.FailedPrecondition, "volume hasn't been staged yet")
 	}
 
-	mounter, err := mounter.New(meta, s3.Config)
-	if err != nil {
-		return nil, err
-	}
-	if err := mounter.Mount(stagingTargetPath, targetPath); err != nil {
-		return nil, err
+	if err := volume.(*Volume).Publish(targetPath); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	glog.V(4).Infof("s3: volume %s successfuly mounted to %s", volumeID, targetPath)
@@ -113,10 +110,21 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		return nil, status.Error(codes.InvalidArgument, "Target path missing in request")
 	}
 
-	if err := mounter.FuseUnmount(targetPath); err != nil {
+	volumeMutex := ns.getVolumeMutex(volumeID)
+	volumeMutex.Lock()
+	defer volumeMutex.Unlock()
+
+	volume, ok := ns.volumes.Load(volumeID)
+	if !ok {
+		glog.Warningf("volume %s hasn't been published", volumeID)
+		return &csi.NodeUnpublishVolumeResponse{}, nil
+	}
+
+	if err := volume.(*Volume).Unpublish(targetPath); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	glog.V(4).Infof("s3: volume %s has been unmounted.", volumeID)
+
+	glog.V(4).Infof("s3: volume %s has been unpublished from %s.", volumeID, targetPath)
 
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
@@ -139,6 +147,10 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 		return nil, status.Error(codes.InvalidArgument, "NodeStageVolume Volume Capability must be provided")
 	}
 
+	volumeMutex := ns.getVolumeMutex(volumeID)
+	volumeMutex.Lock()
+	defer volumeMutex.Unlock()
+
 	notMnt, err := checkMount(stagingTargetPath)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -158,9 +170,14 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	if err != nil {
 		return nil, err
 	}
-	if err := mounter.Stage(stagingTargetPath); err != nil {
-		return nil, err
+
+	volume := NewVolume(volumeID, mounter)
+	if err := volume.Stage(stagingTargetPath); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
 	}
+
+	ns.volumes.Store(volumeID, volume)
+	glog.V(4).Infof("volume %s successfully staged to %s", volumeID, stagingTargetPath)
 
 	return &csi.NodeStageVolumeResponse{}, nil
 }
@@ -175,6 +192,22 @@ func (ns *nodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 	}
 	if len(stagingTargetPath) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Target path missing in request")
+	}
+
+	volumeMutex := ns.getVolumeMutex(volumeID)
+	volumeMutex.Lock()
+	defer volumeMutex.Unlock()
+
+	volume, ok := ns.volumes.Load(volumeID)
+	if !ok {
+		glog.Warningf("volume %s hasn't been staged", volumeID)
+		return &csi.NodeUnstageVolumeResponse{}, nil
+	}
+
+	if err := volume.(*Volume).Unstage(stagingTargetPath); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	} else {
+		ns.volumes.Delete(volumeID)
 	}
 
 	return &csi.NodeUnstageVolumeResponse{}, nil
@@ -200,6 +233,10 @@ func (ns *nodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetC
 
 func (ns *nodeServer) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
 	return &csi.NodeExpandVolumeResponse{}, status.Error(codes.Unimplemented, "NodeExpandVolume is not implemented")
+}
+
+func (ns *nodeServer) getVolumeMutex(volumeID string) *sync.RWMutex {
+	return ns.volumeMutexes.GetMutex(volumeID)
 }
 
 func checkMount(targetPath string) (bool, error) {
