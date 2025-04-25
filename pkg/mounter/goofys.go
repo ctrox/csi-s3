@@ -1,3 +1,5 @@
+//go:build all || goofys
+
 package mounter
 
 import (
@@ -26,12 +28,21 @@ type goofysMounter struct {
 	secretAccessKey string
 }
 
+func init() {
+	registerMounter(goofysMounterType, newGoofysMounter)
+}
+
 func newGoofysMounter(meta *s3.FSMeta, cfg *s3.Config) (Mounter, error) {
 	region := cfg.Region
 	// if endpoint is set we need a default region
 	if region == "" && cfg.Endpoint != "" {
 		region = defaultRegion
 	}
+
+	if len(meta.MounterOptions) > 0 {
+		return nil, fmt.Errorf("custom mount options are not supported for goofys")
+	}
+
 	return &goofysMounter{
 		meta:            meta,
 		endpoint:        cfg.Endpoint,
