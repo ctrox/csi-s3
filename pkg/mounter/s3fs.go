@@ -50,6 +50,16 @@ func (s3fs *s3fsMounter) Mount(source string, target string) error {
 		"-o", "allow_other",
 		"-o", "mp_umask=000",
 	}
+
+	if s3fs.meta.Gid != 0 {
+		args = append(args, "-o")
+		args = append(args, fmt.Sprintf("gid=%d", s3fs.meta.Gid))
+	}
+	if s3fs.meta.Uid != 0 {
+		args = append(args, "-o")
+		args = append(args, fmt.Sprintf("uid=%d", s3fs.meta.Uid))
+	}
+
 	return fuseMount(target, s3fsCmd, args)
 }
 
