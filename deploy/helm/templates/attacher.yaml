@@ -1,0 +1,106 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: csi-attacher-sa
+  labels:
+    {{- include "csi-s3.labels" . | nindent 4 }}
+  {{- with .Values.serviceAccount.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name:  external-attacher-runner
+  labels:
+    {{- include "csi-s3.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattachments"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-attacher-role
+  labels:
+    {{- include "csi-s3.labels" . | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: csi-attacher-sa
+    namespace: "{{ .Release.Namespace }}"
+roleRef:
+  kind: ClusterRole
+  name: external-attacher-runner
+  apiGroup: rbac.authorization.k8s.io
+---
+# needed for StatefulSet
+apiVersion: v1
+kind: Service
+metadata:
+  name: csi-attacher-s3
+  labels:
+    {{- include "csi-s3.labels" . | nindent 4 }}
+    app: csi-attacher-s3
+spec:
+  selector:
+    {{- include "csi-s3.selectorLabels" . | nindent 4 }}
+    app: csi-attacher-s3
+  ports:
+    - name: csi-s3-dummy
+      port: 65535
+---
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name:  csi-attacher-s3
+  labels:
+    {{- include "csi-s3.labels" . | nindent 4 }}
+spec:
+  serviceName: csi-attacher-s3
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "csi-s3.selectorLabels" . | nindent 6 }}
+      app: csi-attacher-s3
+  template:
+    metadata:
+      labels:
+        {{- include "csi-s3.selectorLabels" . | nindent 8 }}
+        app: csi-attacher-s3
+    spec:
+      serviceAccountName: csi-attacher-sa
+      containers:
+        - name: csi-attacher
+          image: "{{ .Values.attacher.image.repository }}:{{ .Values.attacher.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: "{{ .Values.attacher.image.pullPolicy }}"
+          args:
+            - "--v=4"
+            - "--csi-address=$(ADDRESS)"
+          env:
+            - name: ADDRESS
+              value: /var/lib/kubelet/plugins/ch.ctrox.csi.s3-driver/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/kubelet/plugins/ch.ctrox.csi.s3-driver
+      volumes:
+        - name: socket-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins/ch.ctrox.csi.s3-driver
+            type: DirectoryOrCreate
+      tolerations:
+        - key: node-role.kubernetes.io/master
+          operator: "Exists"
